@@ -1,4 +1,5 @@
-const API_BASE = '/api';
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = RAW_BASE ? `${RAW_BASE.replace(/\/$/, '')}/api` : '/api';
 
 export async function apiStartSession(minQuestions = 10, streakTarget = 3) {
   const res = await fetch(`${API_BASE}/session/start`, {
