@@ -27,9 +27,17 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+@app.head("/")
+@app.get("/api")
+@app.head("/api")
 @app.get("/api/health")
 def health_check():
-    return {"status": "healthy", "service": "predictive-bot-api"}
+    return {
+        "status": "healthy",
+        "service": "predictive-bot-api",
+        "message": "AURA Predictive Cognition API is live and operational."
+    }
 
 
 @app.post("/api/session/start", response_model=StartSessionResponse)
