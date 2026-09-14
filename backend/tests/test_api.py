@@ -49,7 +49,7 @@ def test_personality_driven_predictions_and_number_forces():
     from app.engine import FORCING_TRIALS_MASTER
     odd_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_odd_two_digit")
     tool_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "force_tool_color")
-    single_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_single_digit")
+    clasp_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "force_hand_clasp")
 
     alpha_profile = {"temperament": "cautious", "energy": "quiet", "cognition": "analytical"}
     beta_profile = {"temperament": "bold", "energy": "social", "cognition": "creative"}
@@ -68,12 +68,12 @@ def test_personality_driven_predictions_and_number_forces():
     assert beta_tool_pred == "Red Hammer"
     assert alpha_tool_pred != beta_tool_pred
 
-    alpha_single_pred = single_trial["resolver"](alpha_profile)["target"]
-    beta_single_pred = single_trial["resolver"](beta_profile)["target"]
-    print(f"Single Digit Prediction -> Alpha: '{alpha_single_pred}' vs Beta: '{beta_single_pred}'")
-    assert alpha_single_pred == "7"
-    assert beta_single_pred == "3"
-    assert alpha_single_pred != beta_single_pred
+    alpha_clasp_pred = clasp_trial["resolver"](alpha_profile)["target"]
+    beta_clasp_pred = clasp_trial["resolver"](beta_profile)["target"]
+    print(f"Hand Clasp Prediction -> Alpha: '{alpha_clasp_pred}' vs Beta: '{beta_clasp_pred}'")
+    assert alpha_clasp_pred == "Right thumb"
+    assert beta_clasp_pred == "Left thumb"
+    assert alpha_clasp_pred != beta_clasp_pred
 
     # --- 4. VERIFY INVARIANCE NUMBER FORCES ---
     num_1089_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_1089")
@@ -87,6 +87,14 @@ def test_personality_driven_predictions_and_number_forces():
     num_root_9 = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_digital_root_9")
     assert num_root_9["resolver"]({})["target"] == "9"
     print("Digital Root 9 verified: '9'")
+
+    num_repunit_37 = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_repunit_37")
+    assert num_repunit_37["resolver"]({})["target"] == "37"
+    print("Repunit 37 verified: '37'")
+
+    num_cyclic_7 = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_cyclic_7")
+    assert num_cyclic_7["resolver"]({})["target"] == "7"
+    print("Cyclic 7 verified: '7'")
 
     # --- 5. VERIFY MIND-PEEK TELEMETRY PREDICTED QUESTIONS & ANSWERS ---
     print("\n--- Verifying Mind-Peek Telemetry Payload ---")
@@ -312,10 +320,134 @@ def test_auth_registration_login_and_progress_retention():
     print("\nALL USER AUTH & REGISTRATION TESTS PASSED!")
 
 
+def test_dynamic_profiling_and_expanded_forces():
+    print("\n=======================================================")
+    print(" TESTING DYNAMIC PROFILING PROBES & EXPANDED FORCING CATALOG ")
+    print("=======================================================")
+
+    from app.engine import DYNAMIC_PROFILING_POOLS, FORCING_TRIALS_MASTER
+
+    # 1. Verify pool sizes
+    print(f"Temperament pool size: {len(DYNAMIC_PROFILING_POOLS['temperament'])} probes")
+    print(f"Energy pool size:      {len(DYNAMIC_PROFILING_POOLS['energy'])} probes")
+    print(f"Cognition pool size:   {len(DYNAMIC_PROFILING_POOLS['cognition'])} probes")
+    assert len(DYNAMIC_PROFILING_POOLS["temperament"]) >= 5
+    assert len(DYNAMIC_PROFILING_POOLS["energy"]) >= 5
+    assert len(DYNAMIC_PROFILING_POOLS["cognition"]) >= 5
+
+    num_trials = [t for t in FORCING_TRIALS_MASTER if t.get("domain") == "numerical"]
+    gen_trials = [t for t in FORCING_TRIALS_MASTER if t.get("domain") != "numerical"]
+    print(f"High-Precision Numerical Funnels: {len(num_trials)} trials")
+    print(f"High-Accuracy General Forces:     {len(gen_trials)} trials")
+    print(f"Total Master Forcing Catalog:     {len(FORCING_TRIALS_MASTER)} trials")
+    assert len(num_trials) == 15, "Must have 15 distinct high-precision numerical funnels"
+    assert len(gen_trials) == 6, "Must have 6 high-accuracy general psychological forces"
+    assert len(FORCING_TRIALS_MASTER) == 21
+
+    # 2. Verify dynamic variation across 10 distinct sessions
+    distinct_first_probes = set()
+    distinct_second_probes = set()
+    distinct_third_probes = set()
+
+    for i in range(10):
+        res = client.post("/api/session/start").json()
+        sid = res["session_id"]
+        q1 = res["question"]["question"]
+        distinct_first_probes.add(q1)
+
+        # Answer probe 1
+        res_p2 = client.post("/api/session/answer", json={"session_id": sid, "choice_index": 0}).json()
+        distinct_second_probes.add(res_p2["next_question"]["question"])
+
+        # Answer probe 2
+        res_p3 = client.post("/api/session/answer", json={"session_id": sid, "choice_index": 0}).json()
+        distinct_third_probes.add(res_p3["next_question"]["question"])
+
+    print(f"[OK] Distinct Calibration Q1 observed: {len(distinct_first_probes)}/10")
+    print(f"[OK] Distinct Calibration Q2 observed: {len(distinct_second_probes)}/10")
+    print(f"[OK] Distinct Calibration Q3 observed: {len(distinct_third_probes)}/10")
+    assert len(distinct_first_probes) > 1, "Dynamic profiling probes must vary across sessions"
+    assert len(distinct_second_probes) > 1, "Dynamic profiling probes must vary across sessions"
+    assert len(distinct_third_probes) > 1, "Dynamic profiling probes must vary across sessions"
+
+    # 3. Complete calibration for a new session and inspect the dynamic queue
+    sess = client.post("/api/session/start").json()
+    sid = sess["session_id"]
+    client.post("/api/session/answer", json={"session_id": sid, "choice_index": 0})
+    client.post("/api/session/answer", json={"session_id": sid, "choice_index": 0})
+    p3_res = client.post("/api/session/answer", json={"session_id": sid, "choice_index": 0}).json()
+    assert p3_res["status"] == "profiling_completed"
+
+    dbg = client.get(f"/api/session/{sid}/debug").json()["debug_state"]
+    queue_len = dbg["queue_length"]
+    print(f"[OK] Dynamic forcing queue length: {queue_len} trials")
+    assert queue_len >= 20
+
+    # 4. Verify interleaving of Numerical and General domains
+    upcoming = dbg["upcoming_predictions"]
+    curr = dbg["current_prediction"]
+    domains_in_preview = {curr["domain"]} | {u["domain"] for u in upcoming}
+    print(f"[OK] Cognitive domains present in active preview: {domains_in_preview}")
+    assert len(domains_in_preview) >= 2, "Queue must interleave multiple cognitive domains"
+
+    # 5. Verify General psychological forces resolver accuracy
+    elephant_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "force_animal_denmark")
+    assert "Elephant in Denmark" in elephant_trial["resolver"]({})["target"]
+
+    stroop_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "force_stroop_drink")
+    assert stroop_trial["resolver"]({})["target"] == "Milk"
+    # Verify secondary answer 'water' is supported
+    assert "water" in stroop_trial["resolver"]({})["secondary"]
+
+    kangaroo_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "force_animal_australia")
+    assert "Kangaroo in Australia" in kangaroo_trial["resolver"]({})["target"]
+
+    finger_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "force_index_finger")
+    assert finger_trial["resolver"]({})["target"] == "Index finger"
+
+    clasp_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "force_hand_clasp")
+    assert clasp_trial["resolver"]({"cognition": "analytical"})["target"] == "Right thumb"
+    assert clasp_trial["resolver"]({"cognition": "creative"})["target"] == "Left thumb"
+
+    # 6. Verify New High-Precision Numerical Funnels
+    sum9_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_two_digit_digit_sum_9")
+    assert sum9_trial["resolver"]({})["target"] == "9"
+
+    rep37_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_repunit_37")
+    assert rep37_trial["resolver"]({})["target"] == "37"
+
+    cyclic7_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_cyclic_7")
+    assert cyclic7_trial["resolver"]({})["target"] == "7"
+
+    cal5_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_calendar_5")
+    assert cal5_trial["resolver"]({})["target"] == "5"
+
+    cent100_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_century_100")
+    assert cent100_trial["resolver"]({})["target"] == "100"
+
+    half50_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_half_century_50")
+    assert half50_trial["resolver"]({})["target"] == "50"
+
+    print("[OK] All High-Precision Numerical & General Forces Verified.")
+
+    # 7. Verify answering the active forcing trial with target yields instant HIT
+    active_target = curr["target"]
+    ans_post = client.post("/api/session/answer", json={
+        "session_id": sid,
+        "choice_text": active_target
+    }).json()
+    assert ans_post["is_hit"] == True
+    print(f"[OK] Answering with sealed prediction '{active_target}' scored a HIT: streak={ans_post['current_streak']}")
+
+    print("\nALL DYNAMIC PROFILING & EXPANDED FORCING CATALOG TESTS PASSED!")
+
+
 if __name__ == "__main__":
     test_personality_driven_predictions_and_number_forces()
     test_user_persistence_google_auth_and_self_upgrading()
     test_password_security_and_authentication()
     test_auth_registration_login_and_progress_retention()
+    test_dynamic_profiling_and_expanded_forces()
+
 
 
