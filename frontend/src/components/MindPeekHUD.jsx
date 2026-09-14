@@ -34,7 +34,7 @@ export default function MindPeekHUD({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/80">
-            {modelEvo.version ? modelEvo.version.replace('AURA-Cognition ', '') : 'v2.0'}
+            {modelEvo.version ? modelEvo.version.replace('CLAIRVOYANT-Cognition ', '').replace('AURA-Cognition ', '') : 'v2.0'}
           </span>
           {onClose && (
             <button
@@ -380,7 +380,7 @@ export default function MindPeekHUD({
             </div>
 
             <p className="text-[10px] text-slate-400 leading-relaxed italic">
-              AURA analyzes every input, extracts semantic nuances, dynamically expands its synonym dictionary, and upgrades its predictive weights continuously.
+              CLAIRVOYANT analyzes every input, extracts semantic nuances, dynamically expands its synonym dictionary, and upgrades its predictive weights continuously.
             </p>
           </div>
 

@@ -23,7 +23,7 @@ export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
 
               <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-semibold text-slate-300">AURA</span>
+                  <span className="text-xs font-semibold text-slate-300">CLAIRVOYANT</span>
                   {msg.category && (
                     <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
                       {msg.category}

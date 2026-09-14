@@ -15,7 +15,8 @@ export default function ChatHeader({
   onOpenAuth,
   onLogout,
   userMemory,
-  modelVersion
+  modelVersion,
+  onOpenInstall
 }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -100,13 +101,13 @@ export default function ChatHeader({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
-                AURA
+                CLAIRVOYANT
                 <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
                   Predictive AI
                 </span>
                 {modelVersion && (
                   <span className="hidden md:inline text-[9px] font-mono px-1 rounded bg-slate-800 text-slate-400 border border-slate-700">
-                    {modelVersion.replace('AURA-Cognition ', '')}
+                    {modelVersion.replace('CLAIRVOYANT-Cognition ', '').replace('AURA-Cognition ', '')}
                   </span>
                 )}
               </h1>
@@ -236,16 +237,15 @@ export default function ChatHeader({
             </button>
           )}
 
-          {/* PWA Install App Button */}
-          {!isStandalone && (
-            <button
-              onClick={handleInstallClick}
-              title="Install as App on Mobile or Desktop"
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium bg-purple-950/40 hover:bg-purple-900/50 text-purple-300 border border-purple-500/30 transition shadow-sm"
-            >
-              <Download className="w-3.5 h-3.5 text-purple-400" />
-            </button>
-          )}
+          {/* Download App Button (Desktop & Mobile) */}
+          <button
+            onClick={onOpenInstall}
+            title="Download & Install CLAIRVOYANT on Desktop, Android, or iOS"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600/25 to-cyan-600/25 hover:from-purple-600/40 hover:to-cyan-600/40 text-cyan-300 border border-cyan-500/40 transition shadow-sm"
+          >
+            <Download className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Download</span>
+          </button>
 
           {/* Mind Peek Button */}
           <button

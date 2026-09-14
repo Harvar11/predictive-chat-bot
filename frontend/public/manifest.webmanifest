@@ -1,7 +1,7 @@
 {
-  "name": "AURA - Predictive AI",
-  "short_name": "AURA",
-  "description": "Predictive AI Chatbot with Hidden State Tracker & Mind-Peek Telemetry",
+  "name": "CLAIRVOYANT - Predictive AI",
+  "short_name": "CLAIRVOYANT",
+  "description": "CLAIRVOYANT: Advanced Predictive Cognition AI with Subconscious Priming & Mind-Peek Telemetry",
   "id": "/",
   "start_url": "/",
   "display": "standalone",

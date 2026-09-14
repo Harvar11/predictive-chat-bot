@@ -5,6 +5,7 @@ import ChatFeed from './components/ChatFeed';
 import OptionPicker from './components/OptionPicker';
 import MindPeekHUD from './components/MindPeekHUD';
 import GoogleAuthModal from './components/GoogleAuthModal';
+import InstallModal from './components/InstallModal';
 import { soundManager } from './utils/sound';
 import {
   apiStartSession,
@@ -36,6 +37,28 @@ export default function App() {
   const [userMemory, setUserMemory] = useState(null);
   const [modelVersion, setModelVersion] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handlePromptInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setShowInstallModal(false);
+      }
+    }
+  };
 
   // Mind-Peek telemetry unlock state (unlocked by default, closed until user opens it)
   const [isUnlocked, setIsUnlocked] = useState(true);
@@ -75,7 +98,7 @@ export default function App() {
       const introMsg = {
         id: 'intro',
         role: 'bot',
-        text: res.message || `Greetings. I am AURA, an advanced cognitive prediction system.
+        text: res.message || `Greetings. I am CLAIRVOYANT, an advanced cognitive prediction system.
 
 I will guide your spontaneous thoughts using subconscious psychological forces and cognitive priming constraints. Before you type each answer, I will pre-lock my prediction with a cryptographic seal.
 
@@ -306,6 +329,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         onLogout={handleLogout}
         userMemory={userMemory}
         modelVersion={modelVersion}
+        onOpenInstall={() => setShowInstallModal(true)}
       />
 
       {/* Main Area */}
@@ -353,6 +377,14 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         onClose={() => setShowAuthModal(false)}
         onLoginSuccess={handleLoginSuccess}
         currentUser={currentUser}
+      />
+
+      {/* Download & Install Modal */}
+      <InstallModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+        deferredPrompt={deferredPrompt}
+        onPromptInstall={handlePromptInstall}
       />
     </div>
   );

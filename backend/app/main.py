@@ -22,8 +22,8 @@ from app.models import (
 )
 
 app = FastAPI(
-    title="Predictive Bot API",
-    description="Backend for Predictive Chatbot with Persistent User Memory, Self-Upgrading Learning Loop, and Mind-Peek Telemetry",
+    title="CLAIRVOYANT Predictive Cognition API",
+    description="Backend for CLAIRVOYANT Predictive Chatbot with Persistent User Memory, Self-Upgrading Learning Loop, and Mind-Peek Telemetry",
     version="2.0.0"
 )
 
@@ -45,8 +45,8 @@ app.add_middleware(
 def health_check():
     return {
         "status": "healthy",
-        "service": "predictive-bot-api",
-        "message": "AURA Predictive Cognition API is live and operational."
+        "service": "clairvoyant-api",
+        "message": "CLAIRVOYANT Predictive Cognition API is live and operational."
     }
 
 

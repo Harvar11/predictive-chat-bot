@@ -84,7 +84,7 @@ def init_db():
         INSERT INTO model_evolution (version, total_inputs_absorbed, learned_synonyms_json, empirical_weights_json, last_upgraded_at)
         VALUES (?, ?, ?, ?, ?)
         """, (
-            "AURA-Cognition v2.0 (Baseline)",
+            "CLAIRVOYANT-Cognition v2.0 (Baseline)",
             0,
             json.dumps(initial_synonyms),
             json.dumps({}),
@@ -271,7 +271,7 @@ def get_model_evolution() -> Dict[str, Any]:
     if not row:
         return {
             "generation": 1,
-            "version": "AURA-Cognition v2.0",
+            "version": "CLAIRVOYANT-Cognition v2.0",
             "total_inputs_absorbed": 0,
             "learned_synonyms_count": 0,
             "recent_learned_synonyms": {},
@@ -349,7 +349,7 @@ def absorb_user_input_and_upgrade(
         p_weights[cleaned] = p_weights.get(cleaned, 0) + 1
 
     # Upgrade version: Every 5 inputs or when a new synonym is absorbed, increment minor generation
-    new_version = f"AURA-Cognition v2.{current_gen + (1 if new_synonym_added else 0)}"
+    new_version = f"CLAIRVOYANT-Cognition v2.{current_gen + (1 if new_synonym_added else 0)}"
     cursor.execute("""
     INSERT INTO model_evolution (version, total_inputs_absorbed, learned_synonyms_json, empirical_weights_json, last_upgraded_at)
     VALUES (?, ?, ?, ?, ?)

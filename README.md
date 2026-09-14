@@ -1,6 +1,6 @@
-# Predictive Bot: Mind Reader AI 🧠⚡
+# CLAIRVOYANT: Predictive Cognition AI 🧠⚡
 
-A full-stack predictive chatbot application built with a **FastAPI** backend and a responsive **React + Tailwind CSS** frontend that works smoothly across both **mobile devices** and **desktop browsers**.
+A full-stack predictive cognitive AI application built with a **FastAPI** backend and a responsive **React + Tailwind CSS** frontend that works smoothly across both **mobile devices** and **desktop browsers**.
 
 ---
 
@@ -33,9 +33,9 @@ The project is built as a **Dual-Mode Application** that functions simultaneousl
 - **Android**: Tap the **"Install App"** button in the header (or browser menu $\rightarrow$ **"Install App"** / **"Add to Home screen"**). It installs an app icon on your home screen and runs in native fullscreen standalone mode with its own splash screen.
 - **iPhone / iOS**: Tap the Safari **Share** icon (⎋) $\rightarrow$ **"Add to Home Screen"** (⊞).
 
-### 3. As a Standalone Desktop Application (Windows)
-- **Method A (One-Click)**: Double-click `launch_desktop_app.bat`. It starts both backend and frontend and opens AURA in a dedicated native desktop window (no browser URL bar or tabs).
-- **Method B (Browser PWA)**: In Chrome or Edge, click the **"Install App"** button in the top header or address bar. AURA will be added to your Windows Start Menu and Taskbar!
+### 3. As a Standalone Desktop Application (Windows & macOS)
+- **Method A (One-Click)**: Double-click `launch_desktop_app.bat`. It starts both backend and frontend and opens CLAIRVOYANT in a dedicated native desktop window (no browser URL bar or tabs).
+- **Method B (Browser PWA)**: In Chrome or Edge, click the **"Download"** button in the top header. CLAIRVOYANT will be added to your Desktop, Start Menu, and Taskbar!
 
 ---
 
