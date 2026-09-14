@@ -17,6 +17,12 @@ class QuestionPayload(BaseModel):
     total_steps: Optional[int] = None
     min_questions: Optional[int] = None
     streak_target: Optional[int] = None
+    input_mode: str = "both"  # "freeform" | "choice" | "both"
+    placeholder: Optional[str] = "Type your immediate thought..."
+    sealed_hash: Optional[str] = None
+    priming_steps: Optional[List[str]] = None
+    persona: Optional[str] = None
+    cognitive_branch: Optional[str] = None
 
 
 class StartSessionResponse(BaseModel):
@@ -43,6 +49,12 @@ class AnswerResponse(BaseModel):
     is_hit: Optional[bool] = None
     current_streak: Optional[int] = None
     resolved_choice: Optional[str] = None
+    psychological_insight: Optional[str] = None
+    match_confidence: Optional[str] = None
+    sealed_prediction: Optional[str] = None
+    sealed_hash: Optional[str] = None
+    persona: Optional[str] = None
+    cognitive_branch: Optional[str] = None
 
 
 class SessionStateResponse(BaseModel):

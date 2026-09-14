@@ -75,10 +75,10 @@ def submit_answer(req: AnswerRequest):
     next_q = engine.get_active_question()
     next_q_payload = QuestionPayload(**next_q) if next_q else None
 
-    # Conceal hit/streak details unless reveal was triggered
+    # In cognitive forcing trials, return hit details, sealed prediction, and psychological insight
     is_reveal = result.get("is_reveal", False)
-    current_streak = result.get("current_streak") if is_reveal else None
-    is_hit = result.get("is_hit") if is_reveal else None
+    current_streak = result.get("current_streak")
+    is_hit = result.get("is_hit")
 
     return AnswerResponse(
         session_id=req.session_id,
@@ -90,7 +90,13 @@ def submit_answer(req: AnswerRequest):
         reveal_data=result.get("reveal_data"),
         is_hit=is_hit,
         current_streak=current_streak,
-        resolved_choice=result.get("resolved_choice")
+        resolved_choice=result.get("resolved_choice"),
+        psychological_insight=result.get("psychological_insight"),
+        match_confidence=result.get("match_confidence"),
+        sealed_prediction=result.get("sealed_prediction"),
+        sealed_hash=result.get("sealed_hash"),
+        persona=engine.persona,
+        cognitive_branch=result.get("cognitive_branch"),
     )
 
 

@@ -8,69 +8,87 @@ from app.main import app
 
 client = TestClient(app)
 
-def test_full_pipeline_with_text():
-    print("--- 1. Health Check ---")
-    res = client.get("/api/health")
-    assert res.status_code == 200
-    print("Health check OK.")
+def test_personality_driven_predictions_and_number_forces():
+    print("\n=======================================================")
+    print(" TESTING PERSONALITY-DRIVEN PREDICTIONS & NUMBER FORCES")
+    print("=======================================================")
 
-    print("\n--- 2. Starting Session ---")
-    res = client.post("/api/session/start", json={"min_questions": 10, "streak_target": 3})
-    assert res.status_code == 200
-    data = res.json()
-    session_id = data["session_id"]
-    print(f"Session started: {session_id}")
+    # --- 1. USER CAUTIOUS / ANALYTICAL ---
+    print("\n--- Simulation 1: User Alpha (Cautious & Analytical) ---")
+    res1 = client.post("/api/session/start")
+    sid1 = res1.json()["session_id"]
 
-    print("\n--- 3. Answering Profiling Questions with FREEFORM TEXT ---")
-    text_answers = [
-        "I am definitely an early bird who loves morning sunshine",
-        "Quiet solitude in a secluded cabin",
-        "Strictly planned with an itinerary",
-        "Safe bet with high ratings"
-    ]
-    for step, ans in enumerate(text_answers):
-        res = client.post("/api/session/answer", json={
-            "session_id": session_id,
-            "choice_text": ans
-        })
-        assert res.status_code == 200
-        step_data = res.json()
-        print(f"Profiling Step {step + 1}: status={step_data['status']}, phase={step_data['phase']}")
+    for ans in ["Structured & Cautious", "Quiet Solitude", "Logical Precision & Numbers"]:
+        step1 = client.post("/api/session/answer", json={"session_id": sid1, "choice_text": ans}).json()
 
-    assert step_data["phase"] == "quiz"
-    print("Profiling complete via text input!")
+    alpha_persona = step1["persona"]
+    print(f"Alpha Persona: {alpha_persona}")
+    assert "Analytical" in alpha_persona
 
-    print("\n--- 4. Checking Learned Traits ---")
-    res = client.get(f"/api/session/{session_id}/debug")
-    dbg = res.json()["debug_state"]
-    print("User profile calibrated:", dbg["user_profile"])
-    assert dbg["user_profile"]["chronotype"] == "early"
-    assert dbg["user_profile"]["environment"] == "quiet"
+    dbg1 = client.get(f"/api/session/{sid1}/debug").json()["debug_state"]
+    print(f"Alpha's Queue has {len(dbg1['history']) + dbg1['queue_length']} trials.")
 
-    print("\n--- 5. Answering Quiz Questions with Freeform Text to Trigger 3-Streak Reveal ---")
-    quiz_answers = [
-        "6am sunrise run",             # Correlates with early chronotype
-        "isolated mountain cabin",     # Correlates with quiet environment
-        "wake up instantly at 6:30"    # Correlates with early chronotype
-    ]
-    for q_idx, ans in enumerate(quiz_answers):
-        res = client.post("/api/session/answer", json={
-            "session_id": session_id,
-            "choice_text": ans
-        })
-        assert res.status_code == 200
-        q_data = res.json()
-        print(f"Quiz turn {q_idx + 1}: is_reveal={q_data['is_reveal']}")
+    # Find the odd two digit question in Alpha's queue
+    # Target for cautious/analytical must be 37!
+    # And tool must be Blue Wrench!
+    alpha_targets = {t["id"]: t["target"] for t in client.app.app.extra["engine_ref"] if False} if False else None
 
-    assert q_data["is_reveal"] is True
-    assert q_data["reveal_data"] is not None
-    reveal = q_data["reveal_data"]
-    print("\n--- 6. Reveal Verification ---")
-    print(f"Reason: {reveal['reason']}")
-    print(f"Accuracy: {reveal['accuracy_percent']}%")
-    print(f"Total Hits: {reveal['total_hits']}/{reveal['total_questions']}")
-    assert reveal["total_hits"] == 3
-    print("Text-based prediction test PASSED successfully!")
+    # --- 2. USER BOLD / SPONTANEOUS ---
+    print("\n--- Simulation 2: User Beta (Bold & Spontaneous) ---")
+    res2 = client.post("/api/session/start")
+    sid2 = res2.json()["session_id"]
+
+    for ans in ["Bold & Spontaneous", "Dynamic Social Spaces", "Intuitive Patterns & Imagery"]:
+        step2 = client.post("/api/session/answer", json={"session_id": sid2, "choice_text": ans}).json()
+
+    beta_persona = step2["persona"]
+    print(f"Beta Persona: {beta_persona}")
+    assert "Maverick" in beta_persona
+
+    # --- 3. VERIFY DIFFERENT PREDICTIONS FOR SAME QUESTIONS ---
+    from app.engine import FORCING_TRIALS_MASTER
+    odd_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_odd_two_digit")
+    tool_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "force_tool_color")
+    single_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_single_digit")
+
+    alpha_profile = {"temperament": "cautious", "energy": "quiet", "cognition": "analytical"}
+    beta_profile = {"temperament": "bold", "energy": "social", "cognition": "creative"}
+
+    alpha_odd_pred = odd_trial["resolver"](alpha_profile)["target"]
+    beta_odd_pred = odd_trial["resolver"](beta_profile)["target"]
+    print(f"\nOdd 2-Digit Prediction -> Alpha: '{alpha_odd_pred}' vs Beta: '{beta_odd_pred}'")
+    assert alpha_odd_pred == "37"
+    assert beta_odd_pred == "73"
+    assert alpha_odd_pred != beta_odd_pred
+
+    alpha_tool_pred = tool_trial["resolver"](alpha_profile)["target"]
+    beta_tool_pred = tool_trial["resolver"](beta_profile)["target"]
+    print(f"Tool Prediction -> Alpha: '{alpha_tool_pred}' vs Beta: '{beta_tool_pred}'")
+    assert alpha_tool_pred == "Blue Wrench"
+    assert beta_tool_pred == "Red Hammer"
+    assert alpha_tool_pred != beta_tool_pred
+
+    alpha_single_pred = single_trial["resolver"](alpha_profile)["target"]
+    beta_single_pred = single_trial["resolver"](beta_profile)["target"]
+    print(f"Single Digit Prediction -> Alpha: '{alpha_single_pred}' vs Beta: '{beta_single_pred}'")
+    assert alpha_single_pred == "7"
+    assert beta_single_pred == "3"
+    assert alpha_single_pred != beta_single_pred
+
+    # --- 4. VERIFY INVARIANCE NUMBER FORCES ---
+    num_1089_trial = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_1089")
+    assert num_1089_trial["resolver"]({})["target"] == "1089"
+    print("1089 Invariance Force verified: '1089'")
+
+    num_magic_4 = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_magic_4")
+    assert num_magic_4["resolver"]({})["target"] == "4"
+    print("Algebraic Remainder 4 verified: '4'")
+
+    num_root_9 = next(t for t in FORCING_TRIALS_MASTER if t["id"] == "num_force_digital_root_9")
+    assert num_root_9["resolver"]({})["target"] == "9"
+    print("Digital Root 9 verified: '9'")
+
+    print("\nALL PERSONALITY-DRIVEN & NUMBER-FORCING TESTS PASSED!")
 
 if __name__ == "__main__":
-    test_full_pipeline_with_text()
+    test_personality_driven_predictions_and_number_forces()

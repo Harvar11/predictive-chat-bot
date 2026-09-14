@@ -14,12 +14,13 @@ import {
 export default function App() {
   const [sessionId, setSessionId] = useState(null);
   const [phase, setPhase] = useState('profiling');
+  const [persona, setPersona] = useState(null);
   const [messages, setMessages] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isThinking, setIsThinking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   
-  // Mind-Peek is locked and hidden at the beginning until reveal condition is reached
+  // Mind-Peek telemetry unlock state
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showMindPeek, setShowMindPeek] = useState(false);
   
@@ -33,6 +34,7 @@ export default function App() {
       setIsThinking(true);
       setIsUnlocked(false);
       setShowMindPeek(false);
+      setPersona(null);
 
       const res = await apiStartSession(10, 3);
       setSessionId(res.session_id);
@@ -41,7 +43,7 @@ export default function App() {
       const introMsg = {
         id: 'intro',
         role: 'bot',
-        text: "Greetings. I am AURA, a predictive cognition system.\n\nFirst, I will ask 4 psychometric anchor questions to calibrate your cognitive baseline. You can select an option or type your own short, precise answer in the text box below.\n\nAfter calibration, I will begin silently anticipating your answers in real-time. Let's begin.",
+        text: "Greetings. I am AURA, an advanced cognitive prediction system.\n\nI will guide your spontaneous thoughts using subconscious psychological forces and cognitive priming constraints. Before you type each answer, I will pre-lock my prediction with a cryptographic seal.\n\nFirst, 3 quick calibration anchors to tune into your neural baseline. Let's begin.",
       };
 
       const q = res.question;
@@ -49,8 +51,9 @@ export default function App() {
         id: `q-${q.question_id}`,
         role: 'bot',
         category: q.category,
-        stepBadge: `Calibration ${q.step_number}/${q.total_steps}`,
+        stepBadge: `Calibration ${q.step_number}/${q.total_steps || 3}`,
         text: q.question,
+        sealedHash: q.sealed_hash,
       } : null;
 
       setMessages(qMsg ? [introMsg, qMsg] : [introMsg]);
@@ -105,34 +108,38 @@ export default function App() {
     setIsThinking(true);
 
     try {
-      // Submit answer (both or either index and text) to backend
+      // Submit answer to backend
       const res = await apiSubmitAnswer(sessionId, choiceIndex, choiceText);
 
       soundManager.playTurnProgress();
       setPhase(res.phase);
 
-      // Handle transition from profiling to quiz
+      // Handle transition from calibration to cognitive forcing
       if (res.status === 'profiling_completed') {
+        if (res.persona) setPersona(res.persona);
         const sysMsg = {
           id: `sys-${Date.now()}`,
           role: 'system',
-          text: '🧠 Baseline psychometrics calibrated. Silent prediction engine activated.',
+          text: `🧠 Neural baseline calibrated. Persona: ${res.persona || 'Adaptive'}. Commencing Subconscious Forcing Trials.`,
         };
         setMessages((prev) => [...prev, sysMsg]);
       }
 
-      // Check if reveal threshold was triggered (3 streak or 10 questions)
-      // NO MODAL POPUP! Instead, unlock and smoothly open Mind-Peek, post in-feed card, and trigger fanfare
+      // Predictions are kept silent in chat and delivered exclusively to Mind-Peek HUD
+      // No turn-by-turn prediction cards are posted to chat feed
+
+      // Check if reveal milestone was triggered (3 streak or 10 questions)
+      // Mind-Peek is unlocked, but does NOT pop up automatically (user opens when desired)
       if (res.is_reveal && res.reveal_data) {
         setIsUnlocked(true);
-        setShowMindPeek(true);
+        // setShowMindPeek(false) - remains closed until user clicks
 
         try {
           confetti({
-            particleCount: 70,
-            spread: 60,
+            particleCount: 80,
+            spread: 70,
             origin: { y: 0.7 },
-            colors: ['#8b5cf6', '#06b6d4', '#ec4899', '#3b82f6']
+            colors: ['#06b6d4', '#8b5cf6', '#ec4899', '#38bdf8']
           });
         } catch (e) {}
 
@@ -152,15 +159,17 @@ export default function App() {
         setCurrentQuestion(nextQ);
 
         const badge = nextQ.phase === 'profiling'
-          ? `Calibration ${nextQ.step_number}/${nextQ.total_steps}`
-          : `Trial #${nextQ.step_number}`;
+          ? `Calibration ${nextQ.step_number}/${nextQ.total_steps || 3}`
+          : `Forcing Trial #${nextQ.step_number}`;
 
         const nextMsg = {
           id: `q-${nextQ.question_id}-${Date.now()}`,
           role: 'bot',
           category: nextQ.category,
           stepBadge: badge,
+          cognitiveBranch: nextQ.cognitive_branch,
           text: nextQ.question,
+          sealedHash: nextQ.sealed_hash,
         };
 
         setMessages((prev) => [...prev, nextMsg]);
@@ -177,7 +186,7 @@ export default function App() {
         {
           id: `err-${Date.now()}`,
           role: 'system',
-          text: 'Error transmitting answer to backend. Please retry.'
+          text: 'Error transmitting response to neural engine. Please retry.'
         }
       ]);
     } finally {
@@ -191,7 +200,6 @@ export default function App() {
   };
 
   const handleToggleMindPeek = () => {
-    // Only toggle if already unlocked
     if (!isUnlocked) return;
     setShowMindPeek((prev) => {
       const next = !prev;
@@ -207,6 +215,7 @@ export default function App() {
       {/* Header */}
       <ChatHeader
         phase={phase}
+        persona={persona}
         showMindPeek={showMindPeek}
         onToggleMindPeek={handleToggleMindPeek}
         isUnlocked={isUnlocked}
@@ -216,9 +225,9 @@ export default function App() {
         loading={loading}
       />
 
-      {/* Main Body: Chat Feed + Mind-Peek HUD */}
+      {/* Main Area */}
       <main className="flex-1 flex overflow-hidden max-w-6xl w-full mx-auto relative">
-        {/* Chat Feed Area */}
+        {/* Chat Feed */}
         <div className="flex-1 flex flex-col min-w-0 h-full">
           <ChatFeed
             messages={messages}
@@ -226,19 +235,19 @@ export default function App() {
             onOpenMindPeek={() => setShowMindPeek(true)}
           />
 
-          {/* Touch options and text input */}
+          {/* Option Picker & Freeform Forcing Input */}
           <OptionPicker
             options={currentQuestion?.options || []}
             onSelectOption={handleSelectOption}
             disabled={isThinking || !currentQuestion}
             phase={phase}
+            currentQuestion={currentQuestion}
           />
         </div>
 
-        {/* Mind-Peek HUD: Appears seamlessly when unlocked without popup */}
+        {/* Mind-Peek Telemetry HUD */}
         {showMindPeek && isUnlocked && (
           <div className="fixed inset-y-0 right-0 z-40 lg:relative lg:inset-auto flex">
-            {/* Backdrop for mobile drawer */}
             <div
               className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm lg:hidden"
               onClick={() => setShowMindPeek(false)}

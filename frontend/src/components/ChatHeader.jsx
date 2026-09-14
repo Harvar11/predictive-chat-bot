@@ -3,6 +3,7 @@ import { Sparkles, Eye, EyeOff, RotateCcw, Volume2, VolumeX, Cpu, Lock, Unlock, 
 
 export default function ChatHeader({
   phase,
+  persona,
   showMindPeek,
   onToggleMindPeek,
   isUnlocked,
@@ -52,15 +53,16 @@ export default function ChatHeader({
     switch (phase) {
       case 'profiling':
         return {
-          text: 'Phase 1: Psychometric Calibration',
+          text: 'Phase 1: Neural Calibration',
           color: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
           dot: 'bg-amber-400 animate-pulse'
         };
+      case 'forcing':
       case 'quiz':
         return {
-          text: 'Phase 2: Silent Prediction Active',
-          color: 'bg-purple-500/10 text-purple-300 border-purple-500/20',
-          dot: 'bg-purple-400 animate-ping'
+          text: 'Phase 2: Dynamic Psychological Forcing',
+          color: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20',
+          dot: 'bg-cyan-400 animate-ping'
         };
       case 'revealed':
         return {
@@ -100,10 +102,16 @@ export default function ChatHeader({
                 </span>
               </h1>
             </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${status.color}`}>
                 {status.text}
               </span>
+              {persona && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30 animate-fade-in">
+                  <Sparkles className="w-3 h-3 text-cyan-400" />
+                  {persona}
+                </span>
+              )}
             </div>
           </div>
         </div>
