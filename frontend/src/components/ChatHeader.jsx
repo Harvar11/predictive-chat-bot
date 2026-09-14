@@ -92,15 +92,15 @@ export default function ChatHeader({
   const status = getStatusBadge();
 
   return (
-    <header className="sticky top-0 z-30 w-full glass-panel border-b border-slate-800/80 px-3 py-2.5 sm:px-6 sm:py-3 safe-pt">
-      <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-3">
+    <header className="sticky top-0 z-30 w-full glass-panel border-b border-slate-800/80 px-2.5 py-2 sm:px-6 sm:py-3 safe-pt">
+      <div className="max-w-6xl mx-auto flex items-center justify-between gap-1.5 sm:gap-3">
         {/* Left: Bot Identity */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 p-[2px] shadow-lg shadow-purple-900/30 shrink-0">
+          <div className="relative flex items-center justify-center w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 p-[2px] shadow-lg shadow-purple-900/30 shrink-0">
             <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-              <Cpu className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 animate-pulse-subtle" />
+              <Cpu className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-cyan-400 animate-pulse-subtle" />
             </div>
-            <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-slate-950 ${status.dot}`} />
+            <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 sm:w-3 sm:h-3 rounded-full border-2 border-slate-950 ${status.dot}`} />
           </div>
 
           <div className="min-w-0">
@@ -117,13 +117,12 @@ export default function ChatHeader({
                 )}
               </h1>
             </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="hidden sm:flex items-center gap-1.5 mt-0.5">
               <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-medium border ${status.color}`}>
-                <span className="sm:hidden">{status.shortText}</span>
-                <span className="hidden sm:inline">{status.text}</span>
+                {status.text}
               </span>
               {persona && (
-                <span className="hidden xs:inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30 truncate max-w-[120px] sm:max-w-none">
+                <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30 truncate max-w-[120px] sm:max-w-none">
                   <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-cyan-400 shrink-0" />
                   <span className="truncate">{persona}</span>
                 </span>
@@ -144,7 +143,7 @@ export default function ChatHeader({
                 ? "Hide Mind-Peek HUD"
                 : "Open Mind-Peek HUD"
             }
-            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 border ${
+            className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 border ${
               !isUnlocked
                 ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
                 : showMindPeek
@@ -157,9 +156,7 @@ export default function ChatHeader({
             ) : (
               <Unlock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             )}
-            <span className="font-mono text-xs">
-              {!isUnlocked ? 'Peek (Locked)' : 'Peek'}
-            </span>
+            <span className="font-mono text-xs">Peek</span>
           </button>
 
           {/* User Profile (shows username) or "Login / Sign Up" Button */}
@@ -253,10 +250,11 @@ export default function ChatHeader({
             <button
               onClick={onOpenAuth}
               title="Log In or Sign Up"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600/25 to-cyan-600/25 hover:from-purple-600/40 hover:to-cyan-600/40 text-cyan-300 border border-cyan-500/40 transition shadow-sm"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600/20 to-cyan-600/20 hover:from-purple-600/30 hover:to-cyan-600/30 text-cyan-300 border border-cyan-500/30 transition shadow-sm"
             >
               <User className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-              <span>Login / Sign Up</span>
+              <span className="hidden sm:inline">Login / Sign Up</span>
+              <span className="sm:hidden">Login</span>
             </button>
           )}
 

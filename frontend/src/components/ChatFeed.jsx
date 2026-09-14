@@ -23,25 +23,29 @@ export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
 
               <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                  <span className="text-xs font-semibold text-slate-300">CLAIRVOYANT</span>
-                  {msg.category && (
-                    <span className="text-[9px] sm:text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                  <span className="text-xs font-semibold text-slate-300 hidden sm:inline">CLAIRVOYANT</span>
+                  {msg.stepBadge ? (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                      {msg.stepBadge}
+                    </span>
+                  ) : msg.category ? (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800/90 text-slate-300 border border-slate-700/60">
+                      {msg.category}
+                    </span>
+                  ) : null}
+                  {msg.category && msg.stepBadge && (
+                    <span className="hidden sm:inline-block text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
                       {msg.category}
                     </span>
                   )}
-                  {msg.stepBadge && (
-                    <span className="text-[9px] sm:text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                      {msg.stepBadge}
-                    </span>
-                  )}
                   {msg.cognitiveBranch && (
-                    <span className="text-[9px] sm:text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-cyan-950/40 text-cyan-300 border border-cyan-800/40">
+                    <span className="hidden sm:inline-block text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-cyan-950/40 text-cyan-300 border border-cyan-800/40">
                       Branch: {msg.cognitiveBranch}
                     </span>
                   )}
                 </div>
 
-                <div className="glass-card text-slate-100 text-xs sm:text-base leading-relaxed p-3.5 sm:p-4 rounded-2xl rounded-tl-sm border border-slate-800 shadow-lg">
+                <div className="glass-card text-slate-100 text-[13px] sm:text-base leading-relaxed p-3.5 sm:p-4 rounded-2xl rounded-tl-sm border border-slate-800/80 shadow-lg">
                   <p className="whitespace-pre-wrap">{msg.text}</p>
                 </div>
               </div>
@@ -54,8 +58,8 @@ export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
           return (
             <div key={msg.id} className="flex items-start justify-end gap-2.5 sm:gap-3 max-w-2xl ml-auto animate-fade-in">
               <div className="flex flex-col items-end gap-1 min-w-0">
-                <span className="text-xs font-semibold text-slate-400">You</span>
-                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs sm:text-base p-3 px-3.5 sm:p-3.5 sm:px-4 rounded-2xl rounded-tr-sm shadow-md shadow-purple-950/40">
+                <span className="text-xs font-semibold text-slate-400 hidden sm:inline">You</span>
+                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[13px] sm:text-base p-3 px-3.5 sm:p-3.5 sm:px-4 rounded-2xl rounded-tr-sm shadow-md shadow-purple-950/40">
                   <p className="font-medium">{msg.text}</p>
                 </div>
               </div>
@@ -73,63 +77,63 @@ export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
           return (
             <div
               key={msg.id}
-              className={`my-3 p-4 sm:p-5 rounded-2xl border animate-fade-in shadow-xl ${
+              className={`my-2.5 sm:my-3 p-3.5 sm:p-5 rounded-2xl border animate-fade-in shadow-xl ${
                 isHit
                   ? 'bg-gradient-to-br from-cyan-950/40 via-slate-900/90 to-purple-950/40 border-cyan-500/40 shadow-cyan-950/20'
                   : 'bg-gradient-to-br from-amber-950/30 via-slate-900/90 to-slate-950 border-slate-800 shadow-slate-950/40'
               }`}
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
                 <div className="flex items-center gap-2">
                   {isHit ? (
-                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
                       MIND-READ CONFIRMED
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
                       COGNITIVE DIVERGENCE
                     </span>
                   )}
 
                   {msg.streak > 0 && (
-                    <span className="text-xs font-mono font-semibold text-amber-400">
+                    <span className="text-[11px] sm:text-xs font-mono font-semibold text-amber-400">
                       🔥 Streak: {msg.streak}
                     </span>
                   )}
                 </div>
 
                 {msg.sealedHash && (
-                  <span className="text-[11px] font-mono text-slate-500 flex items-center gap-1">
+                  <span className="hidden sm:inline-flex text-[11px] font-mono text-slate-500 items-center gap-1">
                     <ShieldCheck className="w-3 h-3 text-cyan-400" />
                     Seal #{msg.sealedHash} Verified
                   </span>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 my-3">
-                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                  <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
-                    CLAIRVOYANT Pre-Sealed Prediction
+              <div className="grid grid-cols-2 gap-2 my-2 sm:gap-2.5 sm:my-3">
+                <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+                  <span className="text-[9px] sm:text-[10px] uppercase font-mono text-cyan-400/80 block mb-0.5">
+                    Predicted
                   </span>
-                  <span className="text-base font-bold text-cyan-300 block">
+                  <span className="text-sm sm:text-base font-bold text-cyan-300 block truncate">
                     "{msg.sealedPrediction}"
                   </span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                  <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
-                    Your Spontaneous Input
+                <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+                  <span className="text-[9px] sm:text-[10px] uppercase font-mono text-slate-400 block mb-0.5">
+                    Your Input
                   </span>
-                  <span className="text-base font-bold text-white block">
+                  <span className="text-sm sm:text-base font-bold text-white block truncate">
                     "{msg.userTyped}"
                   </span>
                 </div>
               </div>
 
               {msg.insight && (
-                <div className="pt-2 border-t border-slate-800/80 text-xs text-slate-300 leading-relaxed">
+                <div className="pt-2 border-t border-slate-800/80 text-[11px] sm:text-xs text-slate-300 leading-relaxed">
                   <span className="font-semibold text-purple-300 block mb-0.5">
                     🧠 Cognitive Mechanics:
                   </span>
