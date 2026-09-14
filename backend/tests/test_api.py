@@ -222,9 +222,100 @@ def test_password_security_and_authentication():
     print("\nALL PASSWORD ENCRYPTION & SECURITY TESTS PASSED!")
 
 
+def test_auth_registration_login_and_progress_retention():
+    print("\n=======================================================")
+    print(" TESTING REGISTRATION, USERNAME LOGIN & PROGRESS SYNC")
+    print("=======================================================")
+
+    import time
+    ts = int(time.time() * 1000)
+    email = f"voyager_{ts}@twilightparadox.com"
+    username = f"voyager_{ts}"
+    password = "QuantumVault#2026"
+
+    # 1. Register a new user with email, password, and username
+    reg_res = client.post("/api/auth/register", json={
+        "email": email,
+        "password": password,
+        "username": username,
+        "name": "Alpha Voyager"
+    })
+    assert reg_res.status_code == 200, f"Registration failed: {reg_res.text}"
+    user_data = reg_res.json()
+    assert user_data["username"] == username
+    assert user_data["email"] == email
+    user_id = user_data["user_id"]
+    print(f"[OK] User registered successfully: user_id={user_id}, username={username}")
+
+    # 2. Reject duplicate email registration
+    dup_email_res = client.post("/api/auth/register", json={
+        "email": email,
+        "password": "AnotherPassword#123",
+        "username": "differentusername"
+    })
+    assert dup_email_res.status_code == 409
+    assert "already registered" in dup_email_res.json()["detail"].lower()
+    print("[OK] Duplicate email rejected with 409 Conflict.")
+
+    # 3. Reject duplicate username registration
+    dup_un_res = client.post("/api/auth/register", json={
+        "email": "different_email@test.com",
+        "password": "AnotherPassword#123",
+        "username": username
+    })
+    assert dup_un_res.status_code == 409
+    assert "already taken" in dup_un_res.json()["detail"].lower()
+    print("[OK] Duplicate username rejected with 409 Conflict.")
+
+    # 4. Login using registered email
+    login_email_res = client.post("/api/auth/login", json={
+        "identifier": email,
+        "password": password
+    })
+    assert login_email_res.status_code == 200
+    assert login_email_res.json()["username"] == username
+    print("[OK] Login via email succeeded.")
+
+    # 5. Login using registered username
+    login_un_res = client.post("/api/auth/login", json={
+        "identifier": username,
+        "password": password
+    })
+    assert login_un_res.status_code == 200
+    assert login_un_res.json()["email"] == email
+    print("[OK] Login via username succeeded.")
+
+    # 6. Reject invalid password
+    bad_login_res = client.post("/api/auth/login", json={
+        "identifier": username,
+        "password": "IncorrectPassword999"
+    })
+    assert bad_login_res.status_code == 401
+    print("[OK] Login with incorrect password rejected with 401.")
+
+    # 7. Complete calibration and record a forcing trial under this user_id
+    s_res = client.post("/api/session/start", json={"user_id": user_id})
+    sid = s_res.json()["session_id"]
+    for ans in ["Structured & Cautious", "Quiet Solitude", "Logical Precision & Numbers"]:
+        client.post("/api/session/answer", json={"session_id": sid, "choice_text": ans, "user_id": user_id})
+    # Answer first forcing trial
+    client.post("/api/session/answer", json={"session_id": sid, "choice_text": "37", "user_id": user_id})
+
+    # Reload profile via login and check progress
+    reloaded = client.post("/api/auth/login", json={
+        "identifier": username,
+        "password": password
+    }).json()
+    assert reloaded["total_trials"] >= 1
+    print(f"[OK] Lifetime progress retained across logins: {reloaded['total_trials']} total trials recorded.")
+
+    print("\nALL USER AUTH & REGISTRATION TESTS PASSED!")
+
+
 if __name__ == "__main__":
     test_personality_driven_predictions_and_number_forces()
     test_user_persistence_google_auth_and_self_upgrading()
     test_password_security_and_authentication()
+    test_auth_registration_login_and_progress_retention()
 
 

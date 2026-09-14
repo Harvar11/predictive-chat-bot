@@ -5,9 +5,12 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from app.session_store import session_store
 from app.database import (
+    init_db,
     get_or_create_user,
     get_user_memory,
-    get_model_evolution
+    get_model_evolution,
+    register_user,
+    login_user
 )
 from app.models import (
     StartSessionRequest,
@@ -18,6 +21,8 @@ from app.models import (
     DebugStateResponse,
     QuestionPayload,
     GoogleAuthRequest,
+    RegisterRequest,
+    LoginRequest,
     UserProfileResponse,
     ModelEvolutionResponse
 )
@@ -27,6 +32,10 @@ app = FastAPI(
     description="Backend for CLAIRVOYANT Predictive Chatbot with Persistent User Memory, Self-Upgrading Learning Loop, and Mind-Peek Telemetry",
     version="2.0.0"
 )
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
 # Enable CORS for local dev and mobile browsers
 app.add_middleware(
@@ -50,11 +59,108 @@ def health_check():
     }
 
 
+@app.post("/api/auth/register", response_model=UserProfileResponse)
+def register_endpoint(req: RegisterRequest):
+    """
+    Dedicated user registration endpoint.
+    Validates unique email and unique username with PBKDF2 encryption.
+    """
+    try:
+        user_data = register_user(
+            email=req.email,
+            password=req.password,
+            username=req.username,
+            name=req.name,
+            avatar_url=req.avatar_url
+        )
+    except ValueError as val_err:
+        err_msg = str(val_err)
+        if err_msg == "EMAIL_ALREADY_REGISTERED":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This email is already registered. Please log in or use another email."
+            )
+        elif err_msg == "USERNAME_ALREADY_TAKEN":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This username is already taken. Please choose another username."
+            )
+        elif err_msg == "INVALID_EMAIL":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Please enter a valid email address."
+            )
+        elif err_msg == "INVALID_USERNAME":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username must be 3-30 characters (letters, numbers, underscore, hyphen)."
+            )
+        elif err_msg == "PASSWORD_TOO_SHORT":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 6 characters."
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=err_msg
+        )
+
+    user_memory = get_user_memory(user_data["user_id"])
+    return UserProfileResponse(
+        user_id=user_data["user_id"],
+        username=user_data.get("username"),
+        name=user_data["name"] or user_data.get("username") or "Cognitive Explorer",
+        email=user_data.get("email"),
+        avatar_url=user_data.get("avatar_url"),
+        master_persona=user_data.get("master_persona"),
+        total_trials=user_memory.get("total_trials", 0),
+        total_hits=user_memory.get("total_hits", 0),
+        accuracy_percent=user_memory.get("accuracy_percent", 0.0),
+        memory_summary=user_data.get("memory_summary"),
+        recent_trials=user_memory.get("recent_trials", [])
+    )
+
+
+@app.post("/api/auth/login", response_model=UserProfileResponse)
+def login_endpoint(req: LoginRequest):
+    """
+    Dedicated user login endpoint accepting either registered email or username with password.
+    """
+    try:
+        user_data = login_user(identifier=req.identifier, password=req.password)
+    except ValueError as val_err:
+        err_msg = str(val_err)
+        if err_msg in ("ACCOUNT_NOT_FOUND", "INVALID_PASSWORD"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email/username or password. Please check your credentials."
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=err_msg
+        )
+
+    user_memory = get_user_memory(user_data["user_id"])
+    return UserProfileResponse(
+        user_id=user_data["user_id"],
+        username=user_data.get("username"),
+        name=user_data["name"] or user_data.get("username") or "Cognitive Explorer",
+        email=user_data.get("email"),
+        avatar_url=user_data.get("avatar_url"),
+        master_persona=user_data.get("master_persona"),
+        total_trials=user_memory.get("total_trials", 0),
+        total_hits=user_memory.get("total_hits", 0),
+        accuracy_percent=user_memory.get("accuracy_percent", 0.0),
+        memory_summary=user_data.get("memory_summary"),
+        recent_trials=user_memory.get("recent_trials", [])
+    )
+
+
 @app.post("/api/auth/google", response_model=UserProfileResponse)
 def google_auth(req: GoogleAuthRequest):
     """
-    Non-intrusive Google Sign-In Handler.
-    Supports official Google GSI JWT tokens as well as lightweight local dev logins.
+    Google Sign-In Handler.
+    Supports official Google GSI JWT tokens as well as lightweight local logins.
     """
     user_id = req.user_id
     email = req.email
@@ -103,7 +209,8 @@ def google_auth(req: GoogleAuthRequest):
 
     return UserProfileResponse(
         user_id=user_data["user_id"],
-        name=user_data["name"] or "Cognitive Explorer",
+        username=user_data.get("username"),
+        name=user_data["name"] or user_data.get("username") or "Cognitive Explorer",
         email=user_data.get("email"),
         avatar_url=user_data.get("avatar_url"),
         master_persona=user_data.get("master_persona"),
@@ -123,7 +230,8 @@ def get_user_profile(user_id: str):
 
     return UserProfileResponse(
         user_id=memory["user_id"],
-        name=memory["name"] or "Cognitive Explorer",
+        username=memory.get("username"),
+        name=memory["name"] or memory.get("username") or "Cognitive Explorer",
         email=memory.get("email"),
         avatar_url=memory.get("avatar_url"),
         master_persona=memory.get("master_persona"),

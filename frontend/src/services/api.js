@@ -56,6 +56,32 @@ export async function apiResetSession(sessionId, minQuestions = 10, streakTarget
   return res.json();
 }
 
+export async function apiRegister(regData) {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(regData),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Registration failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function apiLogin(loginData) {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(loginData),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Login failed: ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export async function apiGoogleAuth(authData) {
   const res = await fetch(`${API_BASE}/auth/google`, {
     method: 'POST',

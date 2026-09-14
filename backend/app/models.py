@@ -87,8 +87,22 @@ class GoogleAuthRequest(BaseModel):
     password: Optional[str] = None
 
 
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    username: str
+    name: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    identifier: str
+    password: str
+
+
 class UserProfileResponse(BaseModel):
     user_id: str
+    username: Optional[str] = None
     name: str
     email: Optional[str] = None
     avatar_url: Optional[str] = None

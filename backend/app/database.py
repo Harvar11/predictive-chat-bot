@@ -26,6 +26,7 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         user_id TEXT PRIMARY KEY,
+        username TEXT UNIQUE,
         email TEXT,
         name TEXT,
         avatar_url TEXT,
@@ -40,11 +41,16 @@ def init_db():
     )
     """)
 
-    # Migrate existing users table if password_hash column is absent
+    # Migrate existing users table if columns are absent
     cursor.execute("PRAGMA table_info(users)")
     existing_cols = [row["name"] for row in cursor.fetchall()]
     if "password_hash" not in existing_cols:
         cursor.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+    if "username" not in existing_cols:
+        cursor.execute("ALTER TABLE users ADD COLUMN username TEXT")
+
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username) WHERE username IS NOT NULL")
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL")
 
     # 2. Trial Inputs table (remembers every question and user input permanently)
     cursor.execute("""
@@ -120,6 +126,121 @@ def verify_password(password: str, stored_hash: str) -> bool:
     expected_key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100_000)
     return secrets.compare_digest(expected_key.hex(), key_hex)
 
+def generate_unique_username(cursor: sqlite3.Cursor, base: str) -> str:
+    """Generates a clean, unique alphanumeric username."""
+    clean = re.sub(r'[^a-zA-Z0-9_]', '', base.lower()).strip('_')
+    if not clean or len(clean) < 3:
+        clean = "explorer"
+    clean = clean[:20]
+    candidate = clean
+    suffix = 1
+    while True:
+        cursor.execute("SELECT user_id FROM users WHERE LOWER(username) = ?", (candidate,))
+        if not cursor.fetchone():
+            return candidate
+        candidate = f"{clean}_{suffix}"
+        suffix += 1
+
+
+def register_user(
+    email: str,
+    password: str,
+    username: str,
+    name: Optional[str] = None,
+    avatar_url: Optional[str] = None
+) -> Dict[str, Any]:
+    email = email.strip().lower()
+    username = username.strip().lower()
+
+    # Validation
+    if not email or "@" not in email:
+        raise ValueError("INVALID_EMAIL")
+    if not re.match(r'^[a-zA-Z0-9_.-]{3,30}$', username):
+        raise ValueError("INVALID_USERNAME")
+    if not password or len(password) < 6:
+        raise ValueError("PASSWORD_TOO_SHORT")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check if email is already registered
+    cursor.execute("SELECT user_id FROM users WHERE LOWER(email) = ?", (email,))
+    if cursor.fetchone():
+        conn.close()
+        raise ValueError("EMAIL_ALREADY_REGISTERED")
+
+    # Check if username is already taken
+    cursor.execute("SELECT user_id FROM users WHERE LOWER(username) = ?", (username,))
+    if cursor.fetchone():
+        conn.close()
+        raise ValueError("USERNAME_ALREADY_TAKEN")
+
+    now = time.time()
+    user_id = f"user_{secrets.token_hex(6)}"
+    pwd_hash = hash_password(password)
+    display_name = name.strip() if name and name.strip() else username
+    avatar = avatar_url or f"https://api.dicebear.com/7.x/bottts/svg?seed={username}"
+
+    cursor.execute("""
+    INSERT INTO users (user_id, username, email, name, avatar_url, password_hash, created_at, last_seen, master_persona, total_trials, total_hits, memory_summary, preferences_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
+    """, (
+        user_id,
+        username,
+        email,
+        display_name,
+        avatar,
+        pwd_hash,
+        now,
+        now,
+        "Calibrating...",
+        "First cognitive session initialized.",
+        json.dumps({})
+    ))
+    conn.commit()
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row)
+
+
+def login_user(identifier: str, password: str) -> Dict[str, Any]:
+    identifier = identifier.strip().lower()
+    if not identifier:
+        raise ValueError("MISSING_IDENTIFIER")
+    if not password:
+        raise ValueError("MISSING_PASSWORD")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Identifier can be email or username
+    cursor.execute("""
+    SELECT * FROM users 
+    WHERE LOWER(email) = ? OR LOWER(username) = ?
+    """, (identifier, identifier))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        raise ValueError("ACCOUNT_NOT_FOUND")
+
+    stored_hash = row["password_hash"]
+    if not stored_hash or not verify_password(password, stored_hash):
+        conn.close()
+        raise ValueError("INVALID_PASSWORD")
+
+    # Update last_seen
+    now = time.time()
+    user_id = row["user_id"]
+    cursor.execute("UPDATE users SET last_seen = ? WHERE user_id = ?", (now, user_id))
+    conn.commit()
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    updated_row = cursor.fetchone()
+    conn.close()
+    return dict(updated_row)
+
+
 def get_or_create_user(
     user_id: str,
     email: Optional[str] = None,
@@ -136,14 +257,21 @@ def get_or_create_user(
     now = time.time()
     if row:
         stored_hash = row["password_hash"]
-        if stored_hash:
-            if not password or not verify_password(password, stored_hash):
+        if password is not None:
+            if stored_hash and not verify_password(password, stored_hash):
                 conn.close()
                 raise ValueError("INVALID_PASSWORD")
-        elif password:
-            # First time user is setting a password on an existing profile
-            new_hash = hash_password(password)
-            cursor.execute("UPDATE users SET password_hash = ? WHERE user_id = ?", (new_hash, user_id))
+            elif not stored_hash:
+                # First time user is setting a password on an existing profile
+                new_hash = hash_password(password)
+                cursor.execute("UPDATE users SET password_hash = ? WHERE user_id = ?", (new_hash, user_id))
+                conn.commit()
+
+        # Check if username is missing on existing user
+        if not row["username"]:
+            base_un = (name or email or row["name"] or "explorer").split("@")[0]
+            new_un = generate_unique_username(cursor, base_un)
+            cursor.execute("UPDATE users SET username = ? WHERE user_id = ?", (new_un, user_id))
             conn.commit()
 
         # Update last seen and any updated profile info
@@ -161,14 +289,17 @@ def get_or_create_user(
         conn.close()
         return dict(updated_row)
     else:
-        # Create new user
+        # Create new user with unique username
         display_name = name or (f"Guest-{user_id[:6]}" if user_id.startswith("guest_") else "Cognitive Explorer")
+        base_un = (name or email or f"guest_{user_id[:6]}").split("@")[0]
+        assigned_un = generate_unique_username(cursor, base_un)
         new_pwd_hash = hash_password(password) if password else None
         cursor.execute("""
-        INSERT INTO users (user_id, email, name, avatar_url, password_hash, created_at, last_seen, master_persona, total_trials, total_hits, memory_summary, preferences_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
+        INSERT INTO users (user_id, username, email, name, avatar_url, password_hash, created_at, last_seen, master_persona, total_trials, total_hits, memory_summary, preferences_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
         """, (
             user_id,
+            assigned_un,
             email,
             display_name,
             avatar_url or "",
@@ -283,6 +414,7 @@ def get_user_memory(user_id: str) -> Dict[str, Any]:
     return {
         "exists": True,
         "user_id": user_row["user_id"],
+        "username": user_row["username"] if "username" in user_row.keys() else None,
         "name": user_row["name"],
         "email": user_row["email"],
         "avatar_url": user_row["avatar_url"],

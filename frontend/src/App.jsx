@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
+import { Lock } from 'lucide-react';
 import ChatHeader from './components/ChatHeader';
 import ChatFeed from './components/ChatFeed';
 import OptionPicker from './components/OptionPicker';
 import MindPeekHUD from './components/MindPeekHUD';
-import GoogleAuthModal from './components/GoogleAuthModal';
+import AuthModal from './components/AuthModal';
 import InstallModal from './components/InstallModal';
 import { soundManager } from './utils/sound';
 import {
   apiStartSession,
   apiSubmitAnswer,
   apiGetDebugState,
+  apiRegister,
+  apiLogin,
   apiGoogleAuth,
   apiGetUserMemory,
   apiGetModelEvolution
@@ -40,9 +43,10 @@ export default function App() {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-  // Mind-Peek telemetry unlock state (unlocked by default, closed until user opens it)
-  const [isUnlocked, setIsUnlocked] = useState(true);
+  // Mind-Peek telemetry unlock state (locked by default, unlocks after 3 streak or 10 questions)
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [showMindPeek, setShowMindPeek] = useState(false);
+  const [showLockModal, setShowLockModal] = useState(false);
   const [debugState, setDebugState] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +61,7 @@ export default function App() {
 
   // Native Android Hardware Back Gesture & PopState Interception
   useEffect(() => {
-    const isAnyModalOpen = showMindPeek || showAuthModal || showInstallModal;
+    const isAnyModalOpen = showMindPeek || showAuthModal || showInstallModal || showLockModal;
     if (isAnyModalOpen) {
       window.history.pushState({ modalOpen: true }, '');
     }
@@ -65,10 +69,11 @@ export default function App() {
       if (showMindPeek) setShowMindPeek(false);
       if (showAuthModal) setShowAuthModal(false);
       if (showInstallModal) setShowInstallModal(false);
+      if (showLockModal) setShowLockModal(false);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [showMindPeek, showAuthModal, showInstallModal]);
+  }, [showMindPeek, showAuthModal, showInstallModal, showLockModal]);
 
   const handlePromptInstall = async () => {
     if (deferredPrompt) {
@@ -102,7 +107,7 @@ export default function App() {
     try {
       setLoading(true);
       setIsThinking(true);
-      setIsUnlocked(true);
+      setIsUnlocked(false);
       setShowMindPeek(false);
       setPersona(null);
 
@@ -176,10 +181,20 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
     } catch (e) {}
   }, []);
 
-  // Handle Google Auth Login
-  const handleLoginSuccess = async (authData) => {
+  // Handle User Auth (Register, Login, Google)
+  const handleLoginSuccess = async (authPayload) => {
     try {
-      const profile = await apiGoogleAuth(authData);
+      let profile;
+      if (authPayload?.type === 'register') {
+        profile = await apiRegister(authPayload.data);
+      } else if (authPayload?.type === 'login') {
+        profile = await apiLogin(authPayload.data);
+      } else if (authPayload?.type === 'google') {
+        profile = await apiGoogleAuth(authPayload.data);
+      } else {
+        profile = await apiGoogleAuth(authPayload);
+      }
+
       setCurrentUser(profile);
       try {
         localStorage.setItem('clairvoyant_user', JSON.stringify(profile));
@@ -189,10 +204,11 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
 
       soundManager.playRevealFanfare();
 
+      const displayHandle = profile.username ? `@${profile.username}` : (profile.name || 'User');
       const syncMsg = {
         id: `auth-${Date.now()}`,
         role: 'system',
-        text: `🔐 Synchronized profile: ${profile.name}. Recalling ${profile.total_trials} lifetime trials (${profile.accuracy_percent}% accuracy).`,
+        text: `🔐 Synchronized profile: ${displayHandle}. Recalling ${profile.total_trials} lifetime trials (${profile.accuracy_percent}% accuracy).`,
       };
       setMessages((prev) => [...prev, syncMsg]);
 
@@ -201,6 +217,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
       }
     } catch (err) {
       console.error('Auth error:', err);
+      throw err;
     }
   };
 
@@ -326,7 +343,10 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
   };
 
   const handleToggleMindPeek = () => {
-    if (!isUnlocked) return;
+    if (!isUnlocked) {
+      setShowLockModal(true);
+      return;
+    }
     setShowMindPeek((prev) => {
       const next = !prev;
       if (next && sessionId) {
@@ -364,7 +384,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
           <ChatFeed
             messages={messages}
             isThinking={isThinking}
-            onOpenMindPeek={() => setShowMindPeek(true)}
+            onOpenMindPeek={handleToggleMindPeek}
           />
 
           {/* Option Picker & Freeform Forcing Input */}
@@ -396,13 +416,51 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         )}
       </main>
 
-      {/* Google Sign-In Modal */}
-      <GoogleAuthModal
+      {/* User Authentication Modal (Login / Sign Up / Guest) */}
+      <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onLoginSuccess={handleLoginSuccess}
         currentUser={currentUser}
       />
+
+      {/* Mind-Peek Locked Notice Dialog */}
+      {showLockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in safe-pb safe-pt">
+          <div className="glass-card max-w-sm w-full p-5 sm:p-6 rounded-2xl border border-amber-500/40 shadow-2xl relative space-y-3.5 text-center my-auto">
+            <button
+              onClick={() => setShowLockModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-900 border border-slate-800 transition"
+              title="Close"
+            >
+              <span className="text-sm font-bold leading-none">&times;</span>
+            </button>
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400 shadow-md shadow-amber-950/40">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-white">Mind-Peek Telemetry Locked</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Mind-Peek is locked at the beginning of each session. It will unlock automatically once CLAIRVOYANT predicts <span className="text-cyan-300 font-bold">3 answers in a row</span> or after completing a series of <span className="text-cyan-300 font-bold">10 questions</span>.
+            </p>
+            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] text-slate-400 space-y-1 text-left">
+              <div className="flex justify-between">
+                <span>Unlock Target 1:</span>
+                <span className="text-cyan-300 font-semibold font-mono">3 Hits in a Row</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Unlock Target 2:</span>
+                <span className="text-purple-300 font-semibold font-mono">10 Questions Completed</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowLockModal(false)}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs transition shadow-lg"
+            >
+              Understood
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Download & Install Modal */}
       <InstallModal
