@@ -2,7 +2,8 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-        <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="CLAIRVOYANT" />
@@ -17,9 +18,29 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+      // Self-healing Watchdog: If a stale Service Worker cached an obsolete bundle or throws 404
+      window.addEventListener('error', function(e) {
+        if (e && (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK'))) {
+          console.warn('Resource load failure detected, invalidating Service Worker caches...');
+          if ('serviceWorker' in navigator && 'caches' in window) {
+            caches.keys().then(function(k) { return Promise.all(k.map(function(n) { return caches.delete(n); })); })
+              .then(function() { return navigator.serviceWorker.getRegistrations(); })
+              .then(function(r) { return Promise.all(r.map(function(reg) { return reg.unregister(); })); })
+              .then(function() { window.location.reload(); });
+          }
+        }
+      }, true);
+    </script>
   </head>
   <body class="bg-[#090d16] text-slate-100 antialiased selection:bg-purple-500 selection:text-white overflow-x-hidden min-h-screen">
-    <div id="root"></div>
+    <div id="root">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#070a12;color:#94a3b8;font-family:system-ui,-apple-system,sans-serif;gap:16px;">
+        <div style="width:44px;height:44px;border-radius:50%;border:3px solid rgba(139,92,246,0.25);border-top-color:#06b6d4;animation:clairvoyant_spin 0.8s linear infinite;"></div>
+        <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;font-weight:600;">Initiating CLAIRVOYANT...</div>
+      </div>
+      <style>@keyframes clairvoyant_spin{to{transform:rotate(360deg)}}</style>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

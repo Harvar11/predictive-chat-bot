@@ -292,16 +292,39 @@ if os.path.exists(STATIC_DIR):
     from fastapi.responses import FileResponse
 
     assets_dir = os.path.join(STATIC_DIR, "assets")
-    if os.path.exists(assets_dir):
-        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/assets/{asset_name:path}")
+    def get_asset(asset_name: str):
+        target = os.path.join(assets_dir, asset_name)
+        if os.path.isfile(target):
+            return FileResponse(target)
+        # Resilient fallback: If an outdated JS bundle is requested by a client's stale cached index.html,
+        # fallback to the active bundle so the client never crashes with 404!
+        if asset_name.endswith(".js"):
+            for f in sorted(os.listdir(assets_dir), reverse=True):
+                if f.startswith("index-") and f.endswith(".js"):
+                    return FileResponse(os.path.join(assets_dir, f), media_type="application/javascript")
+        if asset_name.endswith(".css"):
+            for f in sorted(os.listdir(assets_dir), reverse=True):
+                if f.startswith("index-") and f.endswith(".css"):
+                    return FileResponse(os.path.join(assets_dir, f), media_type="text/css")
+        raise HTTPException(status_code=404, detail="Asset not found")
 
     @app.get("/manifest.webmanifest")
     def get_manifest():
-        return FileResponse(os.path.join(STATIC_DIR, "manifest.webmanifest"), media_type="application/manifest+json")
+        return FileResponse(
+            os.path.join(STATIC_DIR, "manifest.webmanifest"),
+            media_type="application/manifest+json",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
 
     @app.get("/sw.js")
     def get_sw():
-        return FileResponse(os.path.join(STATIC_DIR, "sw.js"), media_type="application/javascript")
+        return FileResponse(
+            os.path.join(STATIC_DIR, "sw.js"),
+            media_type="application/javascript",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
 
     @app.get("/favicon.ico")
     def get_favicon():
@@ -312,7 +335,10 @@ if os.path.exists(STATIC_DIR):
 
     @app.get("/")
     def serve_root():
-        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+        return FileResponse(
+            os.path.join(STATIC_DIR, "index.html"),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
 
     @app.get("/{full_path:path}")
     def catch_all_spa(full_path: str):
@@ -322,4 +348,7 @@ if os.path.exists(STATIC_DIR):
         file_path = os.path.join(STATIC_DIR, full_path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
-        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+        return FileResponse(
+            os.path.join(STATIC_DIR, "index.html"),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )

@@ -84,12 +84,17 @@ export default function App() {
   // Helper to get persistent User ID (Google account or persistent device guest)
   const getUserId = useCallback(() => {
     if (currentUser?.user_id) return currentUser.user_id;
-    let guestId = localStorage.getItem('clairvoyant_guest_id') || localStorage.getItem('aura_guest_id');
-    if (!guestId) {
-      guestId = 'guest_' + Math.random().toString(36).substring(2, 10);
-      localStorage.setItem('clairvoyant_guest_id', guestId); localStorage.setItem('aura_guest_id', guestId);
+    try {
+      let guestId = localStorage.getItem('clairvoyant_guest_id') || localStorage.getItem('aura_guest_id');
+      if (!guestId) {
+        guestId = 'guest_' + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem('clairvoyant_guest_id', guestId);
+        localStorage.setItem('aura_guest_id', guestId);
+      }
+      return guestId;
+    } catch {
+      return 'guest_' + Math.random().toString(36).substring(2, 10);
     }
-    return guestId;
   }, [currentUser]);
 
   // Initialize or restart session
@@ -176,7 +181,10 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
     try {
       const profile = await apiGoogleAuth(authData);
       setCurrentUser(profile);
-      localStorage.setItem('clairvoyant_user', JSON.stringify(profile)); localStorage.setItem('aura_user', JSON.stringify(profile));
+      try {
+        localStorage.setItem('clairvoyant_user', JSON.stringify(profile));
+        localStorage.setItem('aura_user', JSON.stringify(profile));
+      } catch {}
       setUserMemory(profile);
 
       soundManager.playRevealFanfare();
@@ -197,7 +205,10 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('clairvoyant_user'); localStorage.removeItem('aura_user');
+    try {
+      localStorage.removeItem('clairvoyant_user');
+      localStorage.removeItem('aura_user');
+    } catch {}
     setCurrentUser(null);
     setUserMemory(null);
     initSession();
@@ -326,7 +337,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] max-h-[100dvh] bg-[#070a12] text-slate-100 overflow-hidden font-sans overscroll-contain safe-pt">
+    <div className="flex flex-col min-h-screen h-screen h-[100dvh] max-h-screen max-h-[100dvh] bg-[#070a12] text-slate-100 overflow-hidden font-sans overscroll-contain safe-pt">
       {/* Header */}
       <ChatHeader
         phase={phase}
