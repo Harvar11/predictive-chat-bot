@@ -48,14 +48,14 @@
 
 /* Mobile & Tablet Optimizations */
 html, body {
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: auto;
   -webkit-overflow-scrolling: touch;
-  touch-action: manipulation;
-  height: 100%;
+  touch-action: pan-y;
+  min-height: 100%;
 }
 
 .touch-manipulation {
-  touch-action: manipulation;
+  touch-action: pan-y;
 }
 
 .safe-pb {

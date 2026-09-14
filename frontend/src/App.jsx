@@ -337,7 +337,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
   };
 
   return (
-    <div className="flex flex-col min-h-screen h-screen h-[100dvh] max-h-screen max-h-[100dvh] bg-[#070a12] text-slate-100 overflow-hidden font-sans overscroll-contain safe-pt">
+    <div className="flex flex-col min-h-[100dvh] lg:h-[100dvh] lg:max-h-[100dvh] lg:overflow-hidden bg-[#070a12] text-slate-100 font-sans touch-pan-y">
       {/* Header */}
       <ChatHeader
         phase={phase}
@@ -358,9 +358,9 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
       />
 
       {/* Main Area */}
-      <main className="flex-1 flex overflow-hidden max-w-6xl w-full mx-auto relative">
-        {/* Chat Feed */}
-        <div className="flex-1 flex flex-col min-w-0 h-full">
+      <main className="flex-1 flex flex-col lg:flex-row max-w-6xl w-full mx-auto relative lg:overflow-hidden">
+        {/* Chat Feed & Controls Column */}
+        <div className="flex-1 flex flex-col min-w-0 w-full">
           <ChatFeed
             messages={messages}
             isThinking={isThinking}

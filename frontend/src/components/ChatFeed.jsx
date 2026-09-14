@@ -9,7 +9,7 @@ export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
   }, [messages, isThinking]);
 
   return (
-    <div className="flex-1 overflow-y-auto px-3 py-3.5 sm:px-6 sm:py-5 space-y-3.5 sm:space-y-5">
+    <div className="flex-1 overflow-y-auto px-3 py-3.5 sm:px-6 sm:py-5 space-y-3.5 sm:space-y-5 touch-pan-y overscroll-y-auto">
       {messages.map((msg) => {
         // Bot Question Bubble
         if (msg.role === 'bot') {

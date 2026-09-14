@@ -50,7 +50,7 @@ export default function OptionPicker({
   };
 
   return (
-    <div className="w-full glass-panel border-t border-slate-800/80 px-3 py-2.5 sm:px-4 sm:py-3.5 space-y-2 safe-pb">
+    <div className="sticky bottom-0 z-20 w-full glass-panel border-t border-slate-800/80 px-3 py-2.5 sm:px-4 sm:py-3.5 space-y-2 safe-pb touch-pan-y">
       <div className="max-w-3xl mx-auto space-y-2 sm:space-y-2.5">
         
         {/* Header / Context Instructions */}
@@ -85,7 +85,7 @@ export default function OptionPicker({
                 type="button"
                 onClick={() => onSelectOption(idx, opt)}
                 disabled={disabled}
-                className={`group relative flex items-center justify-between text-left p-2.5 sm:p-3 rounded-xl border transition-all duration-150 min-h-[46px] touch-manipulation active:scale-[0.98] ${
+                className={`group relative flex items-center justify-between text-left p-2.5 sm:p-3 rounded-xl border transition-all duration-150 min-h-[46px] touch-pan-y active:scale-[0.98] ${
                   disabled
                     ? 'opacity-50 cursor-not-allowed bg-slate-900/60 border-slate-800 text-slate-500'
                     : 'bg-slate-900/90 hover:bg-slate-800/90 border-slate-800 hover:border-purple-500/50 hover:shadow-md hover:shadow-purple-950/30'
