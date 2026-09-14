@@ -81,12 +81,24 @@ def google_auth(req: GoogleAuthRequest):
     if not user_id:
         user_id = f"user_{int(hash(email or name or 'guest')) & 0xFFFFFFFF}"
 
-    user_data = get_or_create_user(
-        user_id=user_id,
-        email=email,
-        name=name,
-        avatar_url=avatar_url
-    )
+    try:
+        user_data = get_or_create_user(
+            user_id=user_id,
+            email=email,
+            name=name,
+            avatar_url=avatar_url,
+            password=req.password
+        )
+    except ValueError as val_err:
+        if str(val_err) == "INVALID_PASSWORD":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect password for this account. Please enter the correct password."
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(val_err)
+        )
     user_memory = get_user_memory(user_id)
 
     return UserProfileResponse(

@@ -84,6 +84,7 @@ class GoogleAuthRequest(BaseModel):
     email: Optional[str] = None
     name: Optional[str] = None
     picture: Optional[str] = None
+    password: Optional[str] = None
 
 
 class UserProfileResponse(BaseModel):

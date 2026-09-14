@@ -127,7 +127,7 @@ export default function ChatHeader({
         </div>
 
         {/* Right: Controls & User Auth */}
-        <div className="flex items-center gap-1.5 sm:gap-2 relative">
+        <div className="flex items-center gap-1 sm:gap-2 relative shrink-0">
           {/* Google Auth / User Memory Pill */}
           {currentUser ? (
             <div className="relative">
@@ -244,7 +244,7 @@ export default function ChatHeader({
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600/25 to-cyan-600/25 hover:from-purple-600/40 hover:to-cyan-600/40 text-cyan-300 border border-cyan-500/40 transition shadow-sm"
           >
             <Download className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">Download</span>
+            <span className="hidden md:inline">Download</span>
           </button>
 
           {/* Mind Peek Button */}
@@ -258,7 +258,7 @@ export default function ChatHeader({
             }`}
           >
             <Unlock className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{showMindPeek ? "Mind Peek (Open)" : "Mind Peek (Unlocked)"}</span>
+            <span className="hidden sm:inline">{showMindPeek ? "Mind Peek (Open)" : "Mind Peek"}</span><span className="sm:hidden text-[10px]">Peek</span>
           </button>
 
           {/* Sound Mute Toggle */}

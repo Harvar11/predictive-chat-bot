@@ -25,7 +25,8 @@ export default function MindPeekHUD({
   const learnedSynonyms = modelEvo.learned_synonyms || {};
 
   return (
-    <aside className="w-full lg:w-96 shrink-0 glass-panel lg:rounded-2xl border-l lg:border border-slate-800 p-4 sm:p-5 flex flex-col gap-3.5 overflow-y-auto max-h-screen animate-fade-in shadow-2xl">
+    <aside className="w-full lg:w-96 shrink-0 glass-panel lg:rounded-2xl border-t lg:border-t-0 border-l lg:border border-slate-800 p-4 sm:p-5 flex flex-col gap-3.5 overflow-y-auto h-[100dvh] max-h-[100dvh] safe-pb animate-fade-in shadow-2xl">
+      <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto lg:hidden -mt-1 mb-1" id="drag-handle" />
       {/* Top Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-800">
         <div className="flex items-center gap-2 text-cyan-400 font-bold text-sm">

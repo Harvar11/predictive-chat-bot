@@ -49,6 +49,22 @@ export default function App() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+
+  // Native Android Hardware Back Gesture & PopState Interception
+  useEffect(() => {
+    const isAnyModalOpen = showMindPeek || showAuthModal || showInstallModal;
+    if (isAnyModalOpen) {
+      window.history.pushState({ modalOpen: true }, '');
+    }
+    const handlePopState = () => {
+      if (showMindPeek) setShowMindPeek(false);
+      if (showAuthModal) setShowAuthModal(false);
+      if (showInstallModal) setShowInstallModal(false);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [showMindPeek, showAuthModal, showInstallModal]);
+
   const handlePromptInstall = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
@@ -312,7 +328,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
   };
 
   return (
-    <div className="flex flex-col h-screen max-h-screen bg-[#070a12] text-slate-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-[100dvh] max-h-[100dvh] bg-[#070a12] text-slate-100 overflow-hidden font-sans overscroll-contain safe-pt">
       {/* Header */}
       <ChatHeader
         phase={phase}

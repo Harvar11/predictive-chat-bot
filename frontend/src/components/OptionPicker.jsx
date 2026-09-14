@@ -50,7 +50,7 @@ export default function OptionPicker({
   };
 
   return (
-    <div className="w-full glass-panel border-t border-slate-800/80 p-3 sm:p-4 space-y-3">
+    <div className="w-full glass-panel border-t border-slate-800/80 p-2.5 sm:p-4 space-y-2 sm:space-y-3 safe-pb">
       <div className="max-w-3xl mx-auto space-y-3">
         
         {/* Header / Context Instructions */}
@@ -78,14 +78,14 @@ export default function OptionPicker({
 
         {/* Option Chips (If question provides options) */}
         {options && options.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
+          <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
             {options.map((opt, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => onSelectOption(idx, opt)}
                 disabled={disabled}
-                className={`group relative flex items-center justify-between text-left p-3 sm:p-3.5 rounded-xl border transition-all duration-150 min-h-[48px] ${
+                className={`group relative flex items-center justify-between text-left p-2.5 sm:p-3.5 rounded-xl border transition-all duration-150 min-h-[44px] touch-manipulation ${
                   disabled
                     ? 'opacity-50 cursor-not-allowed bg-slate-900/60 border-slate-800 text-slate-500'
                     : 'bg-slate-900/90 hover:bg-slate-800/90 border-slate-800 hover:border-purple-500/40 hover:shadow-md hover:shadow-purple-950/30 active:scale-[0.99]'

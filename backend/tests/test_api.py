@@ -181,8 +181,50 @@ def test_user_persistence_google_auth_and_self_upgrading():
     print("\nALL GOOGLE AUTH, USER MEMORY & SELF-UPGRADING TESTS PASSED!")
 
 
+def test_password_security_and_authentication():
+    print("\n=======================================================")
+    print(" TESTING PASSWORD SECURITY & CREDENTIAL VERIFICATION ")
+    print("=======================================================")
+
+    email = "secure_tester@example.com"
+    uid = "user_secure_test_12345"
+    password = "SuperSecretPassword#2026"
+
+    # 1. Create account with password
+    signup_res = client.post("/api/auth/google", json={
+        "user_id": uid,
+        "email": email,
+        "name": "Secure Tester",
+        "password": password
+    })
+    assert signup_res.status_code == 200
+    print("[OK] Account created with encrypted password hash.")
+
+    # 2. Login with correct password
+    login_success = client.post("/api/auth/google", json={
+        "user_id": uid,
+        "email": email,
+        "password": password
+    })
+    assert login_success.status_code == 200
+    print("[OK] Login with correct password succeeded.")
+
+    # 3. Login with WRONG password -> Expect 401 Unauthorized
+    login_failed = client.post("/api/auth/google", json={
+        "user_id": uid,
+        "email": email,
+        "password": "WrongPassword!999"
+    })
+    assert login_failed.status_code == 401
+    assert "Incorrect password" in login_failed.json()["detail"]
+    print("[OK] Login with incorrect password blocked with 401 Unauthorized.")
+
+    print("\nALL PASSWORD ENCRYPTION & SECURITY TESTS PASSED!")
+
+
 if __name__ == "__main__":
     test_personality_driven_predictions_and_number_forces()
     test_user_persistence_google_auth_and_self_upgrading()
+    test_password_security_and_authentication()
 
 

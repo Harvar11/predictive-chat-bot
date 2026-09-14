@@ -3,6 +3,8 @@ import sqlite3
 import json
 import time
 import re
+import hashlib
+import secrets
 from typing import Dict, Any, Optional, List, Tuple
 
 DB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
@@ -27,6 +29,7 @@ def init_db():
         email TEXT,
         name TEXT,
         avatar_url TEXT,
+        password_hash TEXT,
         created_at REAL,
         last_seen REAL,
         master_persona TEXT,
@@ -36,6 +39,12 @@ def init_db():
         preferences_json TEXT
     )
     """)
+
+    # Migrate existing users table if password_hash column is absent
+    cursor.execute("PRAGMA table_info(users)")
+    existing_cols = [row["name"] for row in cursor.fetchall()]
+    if "password_hash" not in existing_cols:
+        cursor.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
 
     # 2. Trial Inputs table (remembers every question and user input permanently)
     cursor.execute("""
@@ -95,11 +104,28 @@ def init_db():
     conn.close()
 
 
+
+def hash_password(password: str) -> str:
+    """Hashes password with PBKDF2-HMAC-SHA256 and a cryptographically secure random salt."""
+    salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100_000)
+    return f"{salt}${key.hex()}"
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Verifies password against stored salt$hash."""
+    if not stored_hash or "$" not in stored_hash:
+        return False
+    salt, key_hex = stored_hash.split("$", 1)
+    expected_key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100_000)
+    return secrets.compare_digest(expected_key.hex(), key_hex)
+
 def get_or_create_user(
     user_id: str,
     email: Optional[str] = None,
     name: Optional[str] = None,
-    avatar_url: Optional[str] = None
+    avatar_url: Optional[str] = None,
+    password: Optional[str] = None
 ) -> Dict[str, Any]:
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -109,6 +135,17 @@ def get_or_create_user(
 
     now = time.time()
     if row:
+        stored_hash = row["password_hash"]
+        if stored_hash:
+            if not password or not verify_password(password, stored_hash):
+                conn.close()
+                raise ValueError("INVALID_PASSWORD")
+        elif password:
+            # First time user is setting a password on an existing profile
+            new_hash = hash_password(password)
+            cursor.execute("UPDATE users SET password_hash = ? WHERE user_id = ?", (new_hash, user_id))
+            conn.commit()
+
         # Update last seen and any updated profile info
         cursor.execute("""
         UPDATE users 
@@ -126,14 +163,16 @@ def get_or_create_user(
     else:
         # Create new user
         display_name = name or (f"Guest-{user_id[:6]}" if user_id.startswith("guest_") else "Cognitive Explorer")
+        new_pwd_hash = hash_password(password) if password else None
         cursor.execute("""
-        INSERT INTO users (user_id, email, name, avatar_url, created_at, last_seen, master_persona, total_trials, total_hits, memory_summary, preferences_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
+        INSERT INTO users (user_id, email, name, avatar_url, password_hash, created_at, last_seen, master_persona, total_trials, total_hits, memory_summary, preferences_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
         """, (
             user_id,
             email,
             display_name,
             avatar_url or "",
+            new_pwd_hash,
             now,
             now,
             "Calibrating...",

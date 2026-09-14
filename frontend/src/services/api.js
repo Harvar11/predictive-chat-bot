@@ -62,7 +62,10 @@ export async function apiGoogleAuth(authData) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(authData),
   });
-  if (!res.ok) throw new Error(`Google Auth failed: ${res.statusText}`);
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Authentication failed: ${res.statusText}`);
+  }
   return res.json();
 }
 
