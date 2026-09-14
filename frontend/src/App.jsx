@@ -20,8 +20,8 @@ export default function App() {
   const [isThinking, setIsThinking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   
-  // Mind-Peek telemetry unlock state
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  // Mind-Peek telemetry unlock state (unlocked by default, closed until user opens it)
+  const [isUnlocked, setIsUnlocked] = useState(true);
   const [showMindPeek, setShowMindPeek] = useState(false);
   
   const [debugState, setDebugState] = useState(null);
@@ -32,7 +32,7 @@ export default function App() {
     try {
       setLoading(true);
       setIsThinking(true);
-      setIsUnlocked(false);
+      setIsUnlocked(true);
       setShowMindPeek(false);
       setPersona(null);
 

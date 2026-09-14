@@ -680,12 +680,58 @@ class PredictiveEngine:
             t = self.dynamic_queue[self.queue_index]
             current_pred = {
                 "question_id": t["id"],
+                "question": t["q"],
+                "step_number": self.total_questions + 1,
                 "target": t["target"],
+                "predicted_text": t["target"],
                 "sealed_hash": generate_sealed_hash(t["target"], t["id"], self.session_id),
                 "category": t["category"],
                 "domain": t.get("domain", "general"),
                 "psychological_insight": t.get("psychological_insight", "")
             }
+        elif self.phase == "profiling" and self.profiling_index < len(PROFILING_QUESTIONS):
+            q_calib = PROFILING_QUESTIONS[self.profiling_index]
+            current_pred = {
+                "question_id": q_calib["id"],
+                "question": q_calib["q"],
+                "step_number": self.profiling_index + 1,
+                "target": "Calibrating Neural Baseline",
+                "predicted_text": "Calibration in Progress",
+                "sealed_hash": "CALIB-AXIS",
+                "category": q_calib["category"],
+                "domain": "calibration",
+                "psychological_insight": f"Measuring baseline axis: {q_calib['trait']}. Full dynamic predictions unlock once calibration finishes."
+            }
+
+        upcoming_predictions = []
+        if self.phase in ("forcing", "quiz", "revealed") and self.dynamic_queue:
+            for idx in range(self.queue_index + 1, len(self.dynamic_queue)):
+                t = self.dynamic_queue[idx]
+                upcoming_predictions.append({
+                    "step_number": self.total_questions + (idx - self.queue_index) + 1,
+                    "question_id": t["id"],
+                    "question": t["q"],
+                    "category": t["category"],
+                    "domain": t.get("domain", "general"),
+                    "target": t["target"],
+                    "predicted": t["target"],
+                    "sealed_hash": generate_sealed_hash(t["target"], t["id"], self.session_id),
+                    "psychological_insight": t.get("psychological_insight", ""),
+                })
+        elif self.phase == "profiling":
+            for idx in range(self.profiling_index + 1, len(PROFILING_QUESTIONS)):
+                q_calib = PROFILING_QUESTIONS[idx]
+                upcoming_predictions.append({
+                    "step_number": idx + 1,
+                    "question_id": q_calib["id"],
+                    "question": q_calib["q"],
+                    "category": q_calib["category"],
+                    "domain": "calibration",
+                    "target": "Calibration",
+                    "predicted": "Awaiting Calibration",
+                    "sealed_hash": "CALIB-PENDING",
+                    "psychological_insight": f"Next calibration dimension: {q_calib['trait']}",
+                })
 
         return {
             "phase": self.phase,
@@ -697,7 +743,9 @@ class PredictiveEngine:
             "max_streak": self.max_streak,
             "user_profile": self.user_profile,
             "current_prediction": current_pred,
+            "upcoming_predictions": upcoming_predictions,
             "history": self.history,
             "queue_length": len(self.dynamic_queue),
             "queue_index": self.queue_index,
         }
+

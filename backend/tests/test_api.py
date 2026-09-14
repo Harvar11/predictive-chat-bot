@@ -88,7 +88,26 @@ def test_personality_driven_predictions_and_number_forces():
     assert num_root_9["resolver"]({})["target"] == "9"
     print("Digital Root 9 verified: '9'")
 
-    print("\nALL PERSONALITY-DRIVEN & NUMBER-FORCING TESTS PASSED!")
+    # --- 5. VERIFY MIND-PEEK TELEMETRY PREDICTED QUESTIONS & ANSWERS ---
+    print("\n--- Verifying Mind-Peek Telemetry Payload ---")
+    assert "current_prediction" in dbg1
+    assert "question" in dbg1["current_prediction"]
+    assert "target" in dbg1["current_prediction"]
+    assert len(dbg1["current_prediction"]["question"]) > 5
+    assert len(dbg1["current_prediction"]["target"]) > 0
+    print(f"Active Pre-Sealed Question: {dbg1['current_prediction']['question'][:40]}...")
+    print(f"Active Pre-Sealed Answer:   '{dbg1['current_prediction']['target']}'")
+
+    assert "upcoming_predictions" in dbg1
+    assert len(dbg1["upcoming_predictions"]) > 0
+    first_up = dbg1["upcoming_predictions"][0]
+    assert "question" in first_up
+    assert "predicted" in first_up
+    print(f"Upcoming Prediction #1 Question: {first_up['question'][:40]}...")
+    print(f"Upcoming Prediction #1 Answer:   '{first_up['predicted']}'")
+
+    print("\nALL PERSONALITY-DRIVEN, NUMBER-FORCING & TELEMETRY TESTS PASSED!")
 
 if __name__ == "__main__":
     test_personality_driven_predictions_and_number_forces()
+
