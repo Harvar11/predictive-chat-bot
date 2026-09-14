@@ -40,6 +40,12 @@ export default function App() {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
+  // Mind-Peek telemetry unlock state (unlocked by default, closed until user opens it)
+  const [isUnlocked, setIsUnlocked] = useState(true);
+  const [showMindPeek, setShowMindPeek] = useState(false);
+  const [debugState, setDebugState] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const handler = (e) => {
       e.preventDefault();
@@ -48,7 +54,6 @@ export default function App() {
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
-
 
   // Native Android Hardware Back Gesture & PopState Interception
   useEffect(() => {
@@ -75,13 +80,6 @@ export default function App() {
       }
     }
   };
-
-  // Mind-Peek telemetry unlock state (unlocked by default, closed until user opens it)
-  const [isUnlocked, setIsUnlocked] = useState(true);
-  const [showMindPeek, setShowMindPeek] = useState(false);
-  
-  const [debugState, setDebugState] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   // Helper to get persistent User ID (Google account or persistent device guest)
   const getUserId = useCallback(() => {

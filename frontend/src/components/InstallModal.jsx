@@ -17,7 +17,7 @@ export default function InstallModal({
   });
 
   const handleDownloadBat = () => {
-    const targetUrl = window.location.origin.includes('localhost') ? window.location.origin : 'https://clairvoyant-bj7z.onrender.com';
+    const targetUrl = window.location.origin;
     const batContent = `@echo off
 title CLAIRVOYANT Desktop App
 echo Starting CLAIRVOYANT in Standalone App Window...
