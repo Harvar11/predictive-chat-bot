@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, Zap, Brain, ShieldAlert, CheckCircle2, X, Lock, Sparkles, Layers, History, Hash, ArrowRight } from 'lucide-react';
+import { Eye, Zap, Brain, ShieldAlert, CheckCircle2, X, Lock, Sparkles, History, UserCheck, TrendingUp, Cpu, BookOpen } from 'lucide-react';
 
 export default function MindPeekHUD({
   debugState,
@@ -9,18 +9,20 @@ export default function MindPeekHUD({
 }) {
   if (!isOpen) return null;
 
-  const [activeTab, setActiveTab] = useState('forecast'); // 'forecast' | 'history' | 'profile' | 'all'
+  const [activeTab, setActiveTab] = useState('forecast'); // 'forecast' | 'trials' | 'evolution' | 'profile' | 'all'
 
   const profile = debugState?.user_profile || {};
   const currentStreak = debugState?.current_streak || 0;
-  const maxStreak = debugState?.max_streak || 0;
   const totalHits = debugState?.total_hits || 0;
   const totalQuestions = debugState?.total_questions || 0;
   const currentPred = debugState?.current_prediction;
   const upcomingList = debugState?.upcoming_predictions || [];
   const history = debugState?.history || [];
+  const modelEvo = debugState?.model_evolution || {};
+  const userMemory = debugState?.user_memory || {};
 
   const targetText = currentPred?.target || currentPred?.predicted_text || '';
+  const learnedSynonyms = modelEvo.learned_synonyms || {};
 
   return (
     <aside className="w-full lg:w-96 shrink-0 glass-panel lg:rounded-2xl border-l lg:border border-slate-800 p-4 sm:p-5 flex flex-col gap-3.5 overflow-y-auto max-h-screen animate-fade-in shadow-2xl">
@@ -32,7 +34,7 @@ export default function MindPeekHUD({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/80">
-            {phase === 'profiling' ? 'CALIBRATING' : 'LIVE PREDICTIONS'}
+            {modelEvo.version ? modelEvo.version.replace('AURA-Cognition ', '') : 'v2.0'}
           </span>
           {onClose && (
             <button
@@ -73,7 +75,7 @@ export default function MindPeekHUD({
       <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-medium">
         <button
           onClick={() => setActiveTab('forecast')}
-          className={`flex-1 py-1.5 px-2 rounded-lg transition text-center flex items-center justify-center gap-1 ${
+          className={`flex-1 py-1.5 px-1.5 rounded-lg transition text-center flex items-center justify-center gap-1 ${
             activeTab === 'forecast'
               ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40 shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
@@ -81,36 +83,42 @@ export default function MindPeekHUD({
         >
           <Zap className="w-3 h-3 text-amber-400" />
           <span>Forecast</span>
-          <span className="text-[9px] font-mono px-1 rounded bg-slate-800 text-slate-400">
-            {upcomingList.length + (currentPred ? 1 : 0)}
-          </span>
         </button>
 
         <button
-          onClick={() => setActiveTab('history')}
-          className={`flex-1 py-1.5 px-2 rounded-lg transition text-center flex items-center justify-center gap-1 ${
-            activeTab === 'history'
+          onClick={() => setActiveTab('trials')}
+          className={`flex-1 py-1.5 px-1.5 rounded-lg transition text-center flex items-center justify-center gap-1 ${
+            activeTab === 'trials'
               ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40 shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <History className="w-3 h-3 text-purple-400" />
           <span>Trials</span>
-          <span className="text-[9px] font-mono px-1 rounded bg-slate-800 text-slate-400">
-            {history.length}
-          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('evolution')}
+          className={`flex-1 py-1.5 px-1.5 rounded-lg transition text-center flex items-center justify-center gap-1 ${
+            activeTab === 'evolution'
+              ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Cpu className="w-3 h-3 text-emerald-400" />
+          <span>Evolution</span>
         </button>
 
         <button
           onClick={() => setActiveTab('profile')}
-          className={`flex-1 py-1.5 px-2 rounded-lg transition text-center flex items-center justify-center gap-1 ${
+          className={`flex-1 py-1.5 px-1.5 rounded-lg transition text-center flex items-center justify-center gap-1 ${
             activeTab === 'profile'
               ? 'bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/40 shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <Brain className="w-3 h-3 text-indigo-400" />
-          <span>Neural Axis</span>
+          <span>Axis</span>
         </button>
 
         <button
@@ -126,7 +134,7 @@ export default function MindPeekHUD({
       </div>
 
       {/* ========================================================= */}
-      {/* SECTION 1: ACTIVE PRE-SEALED TARGET (Question + Answer) */}
+      {/* TAB 1: FORECAST (Active Question & Pre-Sealed Pipeline)   */}
       {/* ========================================================= */}
       {(activeTab === 'forecast' || activeTab === 'all') && (
         <div className="space-y-3">
@@ -204,9 +212,7 @@ export default function MindPeekHUD({
             )}
           </div>
 
-          {/* ========================================================= */}
-          {/* UPCOMING NEURAL PIPELINE (Upcoming Questions & Answers)   */}
-          {/* ========================================================= */}
+          {/* Upcoming Neural Roadmap */}
           {upcomingList.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -225,7 +231,6 @@ export default function MindPeekHUD({
                     key={item.question_id || idx}
                     className="p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:border-purple-500/40 transition-colors space-y-2 text-xs"
                   >
-                    {/* Header */}
                     <div className="flex items-center justify-between text-[10px] font-mono">
                       <span className="text-purple-300 font-bold">
                         Trial #{item.step_number}: {item.category}
@@ -233,7 +238,6 @@ export default function MindPeekHUD({
                       <span className="text-slate-500">#{item.sealed_hash}</span>
                     </div>
 
-                    {/* Predicted Question */}
                     <div className="p-2 rounded bg-slate-950/70 border border-slate-800/60 text-[11px] text-slate-300">
                       <span className="text-[9px] font-mono text-slate-500 uppercase block mb-0.5">
                         Predicted Question:
@@ -243,7 +247,6 @@ export default function MindPeekHUD({
                       </p>
                     </div>
 
-                    {/* Predicted Answer */}
                     <div className="p-1.5 px-2.5 rounded bg-purple-950/30 border border-purple-500/30 flex items-center justify-between">
                       <span className="text-[10px] font-mono text-purple-300">
                         PREDICTED ANSWER:
@@ -253,7 +256,6 @@ export default function MindPeekHUD({
                       </span>
                     </div>
 
-                    {/* Prime Insight */}
                     {item.psychological_insight && (
                       <p className="text-[9px] text-slate-400 italic line-clamp-2">
                         Prime: {item.psychological_insight}
@@ -268,9 +270,9 @@ export default function MindPeekHUD({
       )}
 
       {/* ========================================================= */}
-      {/* SECTION 2: VERIFIED COGNITIVE TRIALS (History)           */}
+      {/* TAB 2: TRIALS (Completed History)                        */}
       {/* ========================================================= */}
-      {(activeTab === 'history' || activeTab === 'all') && (
+      {(activeTab === 'trials' || activeTab === 'all') && (
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
@@ -300,7 +302,6 @@ export default function MindPeekHUD({
                       : 'bg-slate-900/60 border-slate-800'
                   }`}
                 >
-                  {/* Top Bar */}
                   <div className="flex items-center justify-between text-[10px] font-mono">
                     <span className="text-slate-400">
                       Trial #{h.step || i + 1}: {h.category}
@@ -316,7 +317,6 @@ export default function MindPeekHUD({
                     )}
                   </div>
 
-                  {/* Question Asked */}
                   {h.question && (
                     <div className="p-2 rounded bg-slate-950/60 border border-slate-800/60 text-[11px] text-slate-300">
                       <span className="text-[9px] font-mono text-slate-500 uppercase block mb-0.5">
@@ -328,7 +328,6 @@ export default function MindPeekHUD({
                     </div>
                   )}
 
-                  {/* Answer Comparison */}
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
                     <div className="p-1.5 rounded bg-cyan-950/30 border border-cyan-500/30">
                       <span className="text-[9px] font-mono text-cyan-400 block">SEALED PREDICTION:</span>
@@ -340,7 +339,6 @@ export default function MindPeekHUD({
                     </div>
                   </div>
 
-                  {/* Mechanism Insight */}
                   {h.insight && (
                     <p className="text-[9px] text-slate-400 italic line-clamp-2">
                       Mechanism: {h.insight}
@@ -354,11 +352,111 @@ export default function MindPeekHUD({
       )}
 
       {/* ========================================================= */}
-      {/* SECTION 3: NEURAL PROFILE & PROGRESS METRICS             */}
+      {/* TAB 3: EVOLUTION (Self-Upgrading Model & Persistent Memory)*/}
+      {/* ========================================================= */}
+      {(activeTab === 'evolution' || activeTab === 'all') && (
+        <div className="space-y-3">
+          {/* Model Generation Card */}
+          <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/40 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-emerald-300 font-bold flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                Self-Upgrading Neural Engine
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-700">
+                ACTIVE
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+              <div className="p-2 rounded bg-slate-950/70 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block uppercase">Current Generation:</span>
+                <span className="font-mono font-bold text-white text-xs">{modelEvo.version || 'v2.0'}</span>
+              </div>
+              <div className="p-2 rounded bg-slate-950/70 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block uppercase">Inputs Absorbed:</span>
+                <span className="font-mono font-bold text-emerald-400 text-xs">{modelEvo.total_inputs_absorbed || 0}</span>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-slate-400 leading-relaxed italic">
+              AURA analyzes every input, extracts semantic nuances, dynamically expands its synonym dictionary, and upgrades its predictive weights continuously.
+            </p>
+          </div>
+
+          {/* Persistent User Memory Card */}
+          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-300 font-bold flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-purple-400" />
+                Persistent User Memory
+              </span>
+              <span className="text-[10px] font-mono text-purple-400">
+                SQLite Memory
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="p-2 rounded bg-slate-950/60 border border-slate-800/80">
+                <span className="text-[10px] text-slate-400 block uppercase">Lifetime Trials:</span>
+                <span className="font-mono font-bold text-cyan-300">{userMemory.total_trials || 0}</span>
+              </div>
+              <div className="p-2 rounded bg-slate-950/60 border border-slate-800/80">
+                <span className="text-[10px] text-slate-400 block uppercase">Lifetime Hits:</span>
+                <span className="font-mono font-bold text-emerald-400">{userMemory.total_hits || 0}</span>
+              </div>
+            </div>
+
+            {userMemory.recent_trials && userMemory.recent_trials.length > 0 && (
+              <div className="space-y-1 pt-1">
+                <span className="text-[10px] text-slate-400 uppercase block font-mono">Recent Memory Encounters:</span>
+                <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                  {userMemory.recent_trials.slice(0, 5).map((t, idx) => (
+                    <div key={idx} className="p-1.5 rounded bg-slate-950/40 border border-slate-800/60 text-[10px] flex items-center justify-between">
+                      <span className="text-slate-300 truncate max-w-[130px] font-mono">"{t.user_input}"</span>
+                      <span className={t.is_hit ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                        {t.is_hit ? "MATCH" : "DIVERGED"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Dynamically Learned Vocabulary */}
+          <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-300 font-bold flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
+                Learned Lexical Adaptations ({modelEvo.learned_synonyms_count || 0})
+              </span>
+              <span className="text-[10px] font-mono text-slate-500">Auto-Absorbed</span>
+            </div>
+
+            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              {Object.entries(learnedSynonyms).map(([qid, syns]) => (
+                <div key={qid} className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 space-y-1">
+                  <span className="text-[10px] font-mono text-cyan-400 block">{qid}:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {syns.slice(-6).map((s, sIdx) => (
+                      <span key={sIdx} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 4: PROFILE & AXIS                                    */}
       {/* ========================================================= */}
       {(activeTab === 'profile' || activeTab === 'all') && (
         <div className="space-y-3">
-          {/* Streak and Completion Meters */}
           <div className="space-y-2.5 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
             <div>
               <div className="flex justify-between text-xs mb-1">
@@ -387,7 +485,6 @@ export default function MindPeekHUD({
             </div>
           </div>
 
-          {/* Calibrated Neural Axis Grid */}
           <div className="space-y-2">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
               Calibrated Neural Axis
@@ -409,11 +506,11 @@ export default function MindPeekHUD({
         </div>
       )}
 
-      {/* Footer System Notice */}
+      {/* Footer Notice */}
       <div className="mt-auto p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
         <ShieldAlert className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
         <span>
-          Predictions and upcoming questions are rendered exclusively in Mind-Peek. Cryptographic hashes ensure predictions are immutable before input.
+          Self-upgrading neural engine: All inputs update model empirical weights and expand semantic knowledge vectors.
         </span>
       </div>
     </aside>

@@ -108,6 +108,81 @@ def test_personality_driven_predictions_and_number_forces():
 
     print("\nALL PERSONALITY-DRIVEN, NUMBER-FORCING & TELEMETRY TESTS PASSED!")
 
+
+def test_user_persistence_google_auth_and_self_upgrading():
+    print("\n=======================================================")
+    print(" TESTING GOOGLE AUTH, USER MEMORY & SELF-UPGRADING LOOP ")
+    print("=======================================================")
+
+    # 1. Google Sign-In / User Profile
+    auth_res = client.post("/api/auth/google", json={
+        "user_id": "google_109823471029384",
+        "email": "harsha@example.com",
+        "name": "Harshavardhan",
+        "picture": "https://lh3.googleusercontent.com/a/mock_avatar"
+    })
+    assert auth_res.status_code == 200
+    user_data = auth_res.json()
+    print(f"Authenticated User: {user_data['name']} ({user_data['user_id']})")
+    assert user_data["name"] == "Harshavardhan"
+    assert user_data["email"] == "harsha@example.com"
+
+    uid = user_data["user_id"]
+
+    # 2. Start Session with User ID
+    start_res = client.post("/api/session/start", json={"user_id": uid})
+    assert start_res.status_code == 200
+    session_data = start_res.json()
+    sid = session_data["session_id"]
+    print(f"Session Started for user: {sid}")
+
+    # 3. Complete Calibration Probes
+    client.post("/api/session/answer", json={"session_id": sid, "choice_text": "Structured & Cautious", "user_id": uid})
+    client.post("/api/session/answer", json={"session_id": sid, "choice_text": "Quiet Solitude", "user_id": uid})
+    calib3 = client.post("/api/session/answer", json={"session_id": sid, "choice_text": "Logical Precision & Numbers", "user_id": uid}).json()
+    assert calib3["status"] == "profiling_completed"
+
+    # 4. Submit a cognitive forcing answer with unique synonym
+    dbg = client.get(f"/api/session/{sid}/debug").json()["debug_state"]
+    curr_target = dbg["current_prediction"]["target"]
+    print(f"Active Trial Target: '{curr_target}'")
+
+    # Type an answer matching target
+    ans_res = client.post("/api/session/answer", json={
+        "session_id": sid,
+        "choice_text": curr_target,
+        "user_id": uid
+    }).json()
+
+    assert ans_res["is_hit"] == True
+    assert "evolution_event" in ans_res
+    assert ans_res["evolution_event"]["upgraded"] == True
+    print(f"Model Evolution: {ans_res['model_version']} (Generation #{ans_res['evolution_event']['generation']})")
+    print(f"Total Inputs Absorbed: {ans_res['evolution_event']['total_inputs_absorbed']}")
+
+    # 5. Check Global Model Evolution Endpoint
+    evo_res = client.get("/api/model/evolution").json()
+    assert evo_res["total_inputs_absorbed"] >= 1
+    assert "version" in evo_res
+    print(f"Global Evolution Verified: {evo_res['version']} ({evo_res['learned_synonyms_count']} learned synonyms)")
+
+    # 6. Check Persistent User Memory
+    mem_res = client.get(f"/api/user/{uid}/memory").json()
+    assert mem_res["total_trials"] >= 1
+    assert mem_res["total_hits"] >= 1
+    print(f"User Memory Verified: {mem_res['total_trials']} trials recorded permanently in SQLite.")
+
+    # 7. Start a NEW session for the same user and verify memory greeting
+    new_sess = client.post("/api/session/start", json={"user_id": uid}).json()
+    print(f"Returning User Greeting: '{new_sess['message']}'")
+    assert "Harshavardhan" in new_sess["message"]
+    assert "Recalling" in new_sess["message"]
+
+    print("\nALL GOOGLE AUTH, USER MEMORY & SELF-UPGRADING TESTS PASSED!")
+
+
 if __name__ == "__main__":
     test_personality_driven_predictions_and_number_forces()
+    test_user_persistence_google_auth_and_self_upgrading()
+
 

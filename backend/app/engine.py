@@ -3,6 +3,15 @@ import random
 import hashlib
 from typing import List, Dict, Any, Optional, Tuple
 
+from app.database import (
+    get_or_create_user,
+    record_trial_input,
+    update_user_master_persona,
+    get_user_memory,
+    get_model_evolution,
+    absorb_user_input_and_upgrade
+)
+
 # Phase 1: 3 Personality Calibration Probes
 PROFILING_QUESTIONS = [
     {
@@ -392,10 +401,15 @@ class PredictiveEngine:
     All secret predictions are calculated in the background and stored exclusively in Mind-Peek.
     """
 
-    def __init__(self, session_id: Optional[str] = None, min_questions: int = 10, streak_target: int = 3):
+    def __init__(self, session_id: Optional[str] = None, min_questions: int = 10, streak_target: int = 3, user_id: Optional[str] = None):
         self.session_id = session_id or "default_session"
+        self.user_id = user_id or f"guest_{self.session_id[:8]}"
         self.min_questions = min_questions
         self.streak_target = streak_target
+
+        # Initialize persistent SQLite memory and user identity
+        self.user_record = get_or_create_user(self.user_id)
+        self.user_memory = get_user_memory(self.user_id)
 
         self.phase = "profiling"
         self.profiling_index = 0
@@ -553,6 +567,7 @@ class PredictiveEngine:
         if self.profiling_index >= len(PROFILING_QUESTIONS):
             self.phase = "forcing"
             self._build_dynamic_queue()
+            update_user_master_persona(self.user_id, self.persona, self.persona_description or "")
             next_q = self.get_active_question()
             return {
                 "status": "profiling_completed",
@@ -591,7 +606,34 @@ class PredictiveEngine:
 
         actual_text = choice_text.strip() if choice_text and choice_text.strip() else ""
 
-        is_hit, match_confidence = evaluate_forcing_match(actual_text, target, synonyms, secondary)
+        # Fetch dynamically self-upgraded synonyms from SQLite model evolution
+        evo_data = get_model_evolution()
+        dynamic_synonyms = evo_data.get("learned_synonyms", {}).get(trial["id"], [])
+        all_synonyms = list(set(synonyms + dynamic_synonyms))
+
+        is_hit, match_confidence = evaluate_forcing_match(actual_text, target, all_synonyms, secondary)
+
+        # Record input permanently into SQLite memory
+        record_trial_input(
+            user_id=self.user_id,
+            session_id=self.session_id,
+            question_id=trial["id"],
+            question_domain=trial.get("domain", "general"),
+            question_text=trial["q"],
+            sealed_prediction=target,
+            user_input=actual_text,
+            is_hit=is_hit,
+            confidence=match_confidence
+        )
+
+        # Trigger self-upgrading adaptive learning loop
+        evo_upgrade = absorb_user_input_and_upgrade(
+            question_id=trial["id"],
+            actual_input=actual_text,
+            target=target,
+            persona=self.persona,
+            is_hit=is_hit
+        )
 
         self.total_questions += 1
 
@@ -658,6 +700,9 @@ class PredictiveEngine:
             "sealed_hash": sealed_hash,
             "persona": self.persona,
             "cognitive_branch": trial.get("domain", "Cognitive").capitalize(),
+            "evolution_event": evo_upgrade,
+            "model_version": evo_upgrade.get("version"),
+            "user_memory": get_user_memory(self.user_id),
         }
 
     def get_reveal_summary(self) -> Dict[str, Any]:
@@ -735,6 +780,9 @@ class PredictiveEngine:
 
         return {
             "phase": self.phase,
+            "user_id": self.user_id,
+            "user_memory": get_user_memory(self.user_id),
+            "model_evolution": get_model_evolution(),
             "persona": self.persona,
             "persona_description": self.persona_description,
             "total_questions": self.total_questions,

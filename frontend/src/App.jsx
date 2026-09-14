@@ -4,11 +4,15 @@ import ChatHeader from './components/ChatHeader';
 import ChatFeed from './components/ChatFeed';
 import OptionPicker from './components/OptionPicker';
 import MindPeekHUD from './components/MindPeekHUD';
+import GoogleAuthModal from './components/GoogleAuthModal';
 import { soundManager } from './utils/sound';
 import {
   apiStartSession,
   apiSubmitAnswer,
   apiGetDebugState,
+  apiGoogleAuth,
+  apiGetUserMemory,
+  apiGetModelEvolution
 } from './services/api';
 
 export default function App() {
@@ -20,12 +24,36 @@ export default function App() {
   const [isThinking, setIsThinking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   
+  // User Authentication & Persistent Memory
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('aura_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [userMemory, setUserMemory] = useState(null);
+  const [modelVersion, setModelVersion] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
   // Mind-Peek telemetry unlock state (unlocked by default, closed until user opens it)
   const [isUnlocked, setIsUnlocked] = useState(true);
   const [showMindPeek, setShowMindPeek] = useState(false);
   
   const [debugState, setDebugState] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Helper to get persistent User ID (Google account or persistent device guest)
+  const getUserId = useCallback(() => {
+    if (currentUser?.user_id) return currentUser.user_id;
+    let guestId = localStorage.getItem('aura_guest_id');
+    if (!guestId) {
+      guestId = 'guest_' + Math.random().toString(36).substring(2, 10);
+      localStorage.setItem('aura_guest_id', guestId);
+    }
+    return guestId;
+  }, [currentUser]);
 
   // Initialize or restart session
   const initSession = useCallback(async () => {
@@ -36,14 +64,22 @@ export default function App() {
       setShowMindPeek(false);
       setPersona(null);
 
-      const res = await apiStartSession(10, 3);
+      const uid = getUserId();
+      const res = await apiStartSession(10, 3, uid);
       setSessionId(res.session_id);
       setPhase(res.phase);
+
+      if (res.user_memory) setUserMemory(res.user_memory);
+      if (res.model_version) setModelVersion(res.model_version);
 
       const introMsg = {
         id: 'intro',
         role: 'bot',
-        text: "Greetings. I am AURA, an advanced cognitive prediction system.\n\nI will guide your spontaneous thoughts using subconscious psychological forces and cognitive priming constraints. Before you type each answer, I will pre-lock my prediction with a cryptographic seal.\n\nFirst, 3 quick calibration anchors to tune into your neural baseline. Let's begin.",
+        text: res.message || `Greetings. I am AURA, an advanced cognitive prediction system.
+
+I will guide your spontaneous thoughts using subconscious psychological forces and cognitive priming constraints. Before you type each answer, I will pre-lock my prediction with a cryptographic seal.
+
+First, 3 quick calibration anchors to tune into your neural baseline. Let's begin.`,
       };
 
       const q = res.question;
@@ -77,7 +113,7 @@ export default function App() {
       setIsThinking(false);
       setLoading(false);
     }
-  }, []);
+  }, [getUserId]);
 
   useEffect(() => {
     initSession();
@@ -89,8 +125,46 @@ export default function App() {
     try {
       const res = await apiGetDebugState(sid);
       setDebugState(res.debug_state);
+      if (res.debug_state?.model_evolution?.version) {
+        setModelVersion(res.debug_state.model_evolution.version);
+      }
+      if (res.debug_state?.user_memory) {
+        setUserMemory(res.debug_state.user_memory);
+      }
     } catch (e) {}
   }, []);
+
+  // Handle Google Auth Login
+  const handleLoginSuccess = async (authData) => {
+    try {
+      const profile = await apiGoogleAuth(authData);
+      setCurrentUser(profile);
+      localStorage.setItem('aura_user', JSON.stringify(profile));
+      setUserMemory(profile);
+
+      soundManager.playRevealFanfare();
+
+      const syncMsg = {
+        id: `auth-${Date.now()}`,
+        role: 'system',
+        text: `🔐 Synchronized profile: ${profile.name}. Recalling ${profile.total_trials} lifetime trials (${profile.accuracy_percent}% accuracy).`,
+      };
+      setMessages((prev) => [...prev, syncMsg]);
+
+      if (sessionId) {
+        await refreshDebug(sessionId);
+      }
+    } catch (err) {
+      console.error('Auth error:', err);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('aura_user');
+    setCurrentUser(null);
+    setUserMemory(null);
+    initSession();
+  };
 
   // Handle user selecting an option or typing freeform text
   const handleSelectOption = async (choiceIndex, choiceText) => {
@@ -108,11 +182,15 @@ export default function App() {
     setIsThinking(true);
 
     try {
-      // Submit answer to backend
-      const res = await apiSubmitAnswer(sessionId, choiceIndex, choiceText);
+      // Submit answer to backend with persistent user_id
+      const uid = getUserId();
+      const res = await apiSubmitAnswer(sessionId, choiceIndex, choiceText, uid);
 
       soundManager.playTurnProgress();
       setPhase(res.phase);
+
+      if (res.model_version) setModelVersion(res.model_version);
+      if (res.user_memory) setUserMemory(res.user_memory);
 
       // Handle transition from calibration to cognitive forcing
       if (res.status === 'profiling_completed') {
@@ -125,14 +203,14 @@ export default function App() {
         setMessages((prev) => [...prev, sysMsg]);
       }
 
-      // Predictions are kept silent in chat and delivered exclusively to Mind-Peek HUD
-      // No turn-by-turn prediction cards are posted to chat feed
+      // Check if neural model upgrade event occurred
+      if (res.evolution_event?.new_synonym_learned) {
+        soundManager.playTap();
+      }
 
       // Check if reveal milestone was triggered (3 streak or 10 questions)
-      // Mind-Peek is unlocked, but does NOT pop up automatically (user opens when desired)
       if (res.is_reveal && res.reveal_data) {
         setIsUnlocked(true);
-        // setShowMindPeek(false) - remains closed until user clicks
 
         try {
           confetti({
@@ -223,6 +301,11 @@ export default function App() {
         onToggleMute={handleToggleMute}
         onReset={initSession}
         loading={loading}
+        currentUser={currentUser}
+        onOpenAuth={() => setShowAuthModal(true)}
+        onLogout={handleLogout}
+        userMemory={userMemory}
+        modelVersion={modelVersion}
       />
 
       {/* Main Area */}
@@ -263,6 +346,14 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Google Sign-In Modal */}
+      <GoogleAuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onLoginSuccess={handleLoginSuccess}
+        currentUser={currentUser}
+      />
     </div>
   );
 }

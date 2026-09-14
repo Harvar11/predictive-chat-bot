@@ -1,6 +1,13 @@
+import json
+import base64
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from app.session_store import session_store
+from app.database import (
+    get_or_create_user,
+    get_user_memory,
+    get_model_evolution
+)
 from app.models import (
     StartSessionRequest,
     StartSessionResponse,
@@ -8,13 +15,16 @@ from app.models import (
     AnswerResponse,
     SessionStateResponse,
     DebugStateResponse,
-    QuestionPayload
+    QuestionPayload,
+    GoogleAuthRequest,
+    UserProfileResponse,
+    ModelEvolutionResponse
 )
 
 app = FastAPI(
     title="Predictive Bot API",
-    description="Backend for Predictive Chatbot with Hidden State Tracker and Dynamic Reveal",
-    version="1.0.0"
+    description="Backend for Predictive Chatbot with Persistent User Memory, Self-Upgrading Learning Loop, and Mind-Peek Telemetry",
+    version="2.0.0"
 )
 
 # Enable CORS for local dev and mobile browsers
@@ -40,11 +50,99 @@ def health_check():
     }
 
 
+@app.post("/api/auth/google", response_model=UserProfileResponse)
+def google_auth(req: GoogleAuthRequest):
+    """
+    Non-intrusive Google Sign-In Handler.
+    Supports official Google GSI JWT tokens as well as lightweight local dev logins.
+    """
+    user_id = req.user_id
+    email = req.email
+    name = req.name
+    avatar_url = req.picture
+
+    # If official Google Identity Services credential token is provided, decode payload
+    if req.credential:
+        try:
+            parts = req.credential.split(".")
+            if len(parts) >= 2:
+                # Add padding if needed
+                payload_b64 = parts[1] + "=" * ((4 - len(parts[1]) % 4) % 4)
+                payload_json = base64.urlsafe_b64decode(payload_b64).decode("utf-8")
+                payload = json.loads(payload_json)
+
+                user_id = f"google_{payload.get('sub')}"
+                email = payload.get("email")
+                name = payload.get("name")
+                avatar_url = payload.get("picture")
+        except Exception as e:
+            pass  # Fall back to supplied fields if JWT decode fails
+
+    if not user_id:
+        user_id = f"user_{int(hash(email or name or 'guest')) & 0xFFFFFFFF}"
+
+    user_data = get_or_create_user(
+        user_id=user_id,
+        email=email,
+        name=name,
+        avatar_url=avatar_url
+    )
+    user_memory = get_user_memory(user_id)
+
+    return UserProfileResponse(
+        user_id=user_data["user_id"],
+        name=user_data["name"] or "Cognitive Explorer",
+        email=user_data.get("email"),
+        avatar_url=user_data.get("avatar_url"),
+        master_persona=user_data.get("master_persona"),
+        total_trials=user_memory.get("total_trials", 0),
+        total_hits=user_memory.get("total_hits", 0),
+        accuracy_percent=user_memory.get("accuracy_percent", 0.0),
+        memory_summary=user_data.get("memory_summary"),
+        recent_trials=user_memory.get("recent_trials", [])
+    )
+
+
+@app.get("/api/user/{user_id}/memory", response_model=UserProfileResponse)
+def get_user_profile(user_id: str):
+    memory = get_user_memory(user_id)
+    if not memory.get("exists"):
+        raise HTTPException(status_code=404, detail="User memory not found")
+
+    return UserProfileResponse(
+        user_id=memory["user_id"],
+        name=memory["name"] or "Cognitive Explorer",
+        email=memory.get("email"),
+        avatar_url=memory.get("avatar_url"),
+        master_persona=memory.get("master_persona"),
+        total_trials=memory.get("total_trials", 0),
+        total_hits=memory.get("total_hits", 0),
+        accuracy_percent=memory.get("accuracy_percent", 0.0),
+        memory_summary=memory.get("memory_summary"),
+        recent_trials=memory.get("recent_trials", [])
+    )
+
+
+@app.get("/api/model/evolution", response_model=ModelEvolutionResponse)
+def get_evolution():
+    """Returns self-upgraded model generation metrics and learned patterns."""
+    evo = get_model_evolution()
+    return ModelEvolutionResponse(
+        generation=evo["generation"],
+        version=evo["version"],
+        total_inputs_absorbed=evo["total_inputs_absorbed"],
+        learned_synonyms_count=evo["learned_synonyms_count"],
+        learned_synonyms=evo.get("learned_synonyms", {}),
+        last_upgraded_at=evo.get("last_upgraded_at")
+    )
+
+
 @app.post("/api/session/start", response_model=StartSessionResponse)
 def start_session(req: StartSessionRequest = StartSessionRequest()):
     session_id = session_store.create_session(
         min_questions=req.min_questions,
-        streak_target=req.streak_target
+        streak_target=req.streak_target,
+        user_id=req.user_id
     )
     engine = session_store.get_session(session_id)
     if not engine:
@@ -53,11 +151,25 @@ def start_session(req: StartSessionRequest = StartSessionRequest()):
     first_q = engine.get_active_question()
     q_payload = QuestionPayload(**first_q) if first_q else None
 
+    # Load persistent user memory for greeting personalization
+    user_mem = get_user_memory(engine.user_id)
+    evo = get_model_evolution()
+
+    welcome_msg = "Session initialized. Beginning psychometric calibration."
+    if user_mem.get("exists") and user_mem.get("total_trials", 0) > 0:
+        welcome_msg = (
+            f"Welcome back, {user_mem['name']}. Recalling {user_mem['total_trials']} previous cognitive trials "
+            f"({user_mem['accuracy_percent']}% baseline accuracy). Model upgraded to {evo['version']}."
+        )
+
     return StartSessionResponse(
         session_id=session_id,
         phase=engine.phase,
-        message="Session initialized. Beginning psychometric calibration.",
-        question=q_payload
+        message=welcome_msg,
+        question=q_payload,
+        user_profile=engine.user_record,
+        user_memory=user_mem,
+        model_version=evo.get("version")
     )
 
 
@@ -70,12 +182,16 @@ def submit_answer(req: AnswerRequest):
             detail="Session expired or not found. Please start a new session."
         )
 
+    # Sync user_id if provided
+    if req.user_id and engine.user_id != req.user_id:
+        engine.user_id = req.user_id
+        engine.user_record = get_or_create_user(req.user_id)
+
     result = engine.submit_answer(req.choice_index, req.choice_text)
 
     next_q = engine.get_active_question()
     next_q_payload = QuestionPayload(**next_q) if next_q else None
 
-    # In cognitive forcing trials, return hit details, sealed prediction, and psychological insight
     is_reveal = result.get("is_reveal", False)
     current_streak = result.get("current_streak")
     is_hit = result.get("is_hit")
@@ -97,6 +213,9 @@ def submit_answer(req: AnswerRequest):
         sealed_hash=result.get("sealed_hash"),
         persona=engine.persona,
         cognitive_branch=result.get("cognitive_branch"),
+        evolution_event=result.get("evolution_event"),
+        model_version=result.get("model_version"),
+        user_memory=result.get("user_memory"),
     )
 
 
@@ -135,11 +254,11 @@ def reset_session(session_id: str, req: StartSessionRequest = StartSessionReques
     success = session_store.reset_session(
         session_id,
         min_questions=req.min_questions,
-        streak_target=req.streak_target
+        streak_target=req.streak_target,
+        user_id=req.user_id
     )
     if not success:
-        # If session didn't exist, create it anew
-        session_store.create_session(req.min_questions, req.streak_target)
+        session_store.create_session(req.min_questions, req.streak_target, user_id=req.user_id)
 
     engine = session_store.get_session(session_id)
     first_q = engine.get_active_question() if engine else None

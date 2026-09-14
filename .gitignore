@@ -40,3 +40,8 @@ frontend/package-lock.json
 *.swo
 .DS_Store
 Thumbs.db
+
+# SQLite Database
+*.db
+backend/data/*.db
+
