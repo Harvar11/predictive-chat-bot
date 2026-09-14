@@ -379,12 +379,12 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
 
         {/* Mind-Peek Telemetry HUD */}
         {showMindPeek && isUnlocked && (
-          <div className="fixed inset-y-0 right-0 z-40 lg:relative lg:inset-auto flex">
+          <div className="fixed inset-0 z-40 flex flex-col justify-end lg:relative lg:inset-auto lg:flex-row animate-fade-in">
             <div
-              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm lg:hidden transition-opacity"
               onClick={() => setShowMindPeek(false)}
             />
-            <div className="relative z-10 h-full flex">
+            <div className="relative z-10 w-full lg:w-auto flex">
               <MindPeekHUD
                 debugState={debugState}
                 isOpen={showMindPeek}

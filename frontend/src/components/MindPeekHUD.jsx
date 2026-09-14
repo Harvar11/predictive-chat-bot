@@ -25,13 +25,13 @@ export default function MindPeekHUD({
   const learnedSynonyms = modelEvo.learned_synonyms || {};
 
   return (
-    <aside className="w-full lg:w-96 shrink-0 glass-panel lg:rounded-2xl border-t lg:border-t-0 border-l lg:border border-slate-800 p-4 sm:p-5 flex flex-col gap-3.5 overflow-y-auto h-[100dvh] max-h-[100dvh] safe-pb animate-fade-in shadow-2xl">
-      <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto lg:hidden -mt-1 mb-1" id="drag-handle" />
+    <aside className="w-full lg:w-96 shrink-0 bg-[#0a0e1a]/95 lg:glass-panel rounded-t-3xl lg:rounded-2xl border-t lg:border-t-0 border-l-0 lg:border-l border-slate-800/80 p-4 sm:p-5 flex flex-col gap-3 overflow-y-auto max-h-[85dvh] lg:max-h-full lg:h-full safe-pb animate-fade-in shadow-2xl backdrop-blur-xl">
+      <div className="w-12 h-1.5 bg-slate-700/80 rounded-full mx-auto lg:hidden -mt-1 mb-1 cursor-pointer" onClick={onClose} id="drag-handle" />
       {/* Top Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+      <div className="flex items-center justify-between pb-2.5 border-b border-slate-800/80">
         <div className="flex items-center gap-2 text-cyan-400 font-bold text-sm">
           <Eye className="w-4 h-4 text-cyan-400 animate-pulse" />
-          <span>Mind-Peek Telemetry HUD</span>
+          <span>Mind-Peek Telemetry</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/80">
@@ -41,9 +41,10 @@ export default function MindPeekHUD({
             <button
               onClick={onClose}
               title="Close Mind-Peek HUD"
-              className="lg:hidden p-1 rounded-lg text-slate-400 hover:text-white bg-slate-800 border border-slate-700"
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/90 border border-slate-700 flex items-center gap-1 active:scale-95 transition"
             >
-              <X className="w-3.5 h-3.5" />
+              <span>Done</span>
+              <X className="w-3.5 h-3.5 text-slate-400" />
             </button>
           )}
         </div>
