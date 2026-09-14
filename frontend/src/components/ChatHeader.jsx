@@ -291,7 +291,7 @@ export default function ChatHeader({
             <p className="text-xs text-slate-300 leading-relaxed">
               1. Tap the <strong>Share</strong> icon (⎋) at the bottom of Safari.<br />
               2. Tap <strong>'Add to Home Screen'</strong> (⊞).<br />
-              3. AURA will launch in standalone app mode!
+              3. CLAIRVOYANT will launch in standalone app mode!
             </p>
             <button
               onClick={() => setShowIosTip(false)}

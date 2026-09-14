@@ -1,9 +1,15 @@
-const CACHE_NAME = 'aura-predictive-v1';
+const CACHE_NAME = 'clairvoyant-pwa-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
+  '/favicon-64.png',
 ];
 
 self.addEventListener('install', (event) => {

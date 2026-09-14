@@ -117,15 +117,15 @@ def test_user_persistence_google_auth_and_self_upgrading():
     # 1. Google Sign-In / User Profile
     auth_res = client.post("/api/auth/google", json={
         "user_id": "google_109823471029384",
-        "email": "harsha@example.com",
-        "name": "Harshavardhan",
+        "email": "alex@example.com",
+        "name": "Alex Rivers",
         "picture": "https://lh3.googleusercontent.com/a/mock_avatar"
     })
     assert auth_res.status_code == 200
     user_data = auth_res.json()
     print(f"Authenticated User: {user_data['name']} ({user_data['user_id']})")
-    assert user_data["name"] == "Harshavardhan"
-    assert user_data["email"] == "harsha@example.com"
+    assert user_data["name"] == "Alex Rivers"
+    assert user_data["email"] == "alex@example.com"
 
     uid = user_data["user_id"]
 
@@ -175,7 +175,7 @@ def test_user_persistence_google_auth_and_self_upgrading():
     # 7. Start a NEW session for the same user and verify memory greeting
     new_sess = client.post("/api/session/start", json={"user_id": uid}).json()
     print(f"Returning User Greeting: '{new_sess['message']}'")
-    assert "Harshavardhan" in new_sess["message"]
+    assert "Alex Rivers" in new_sess["message"]
     assert "Recalling" in new_sess["message"]
 
     print("\nALL GOOGLE AUTH, USER MEMORY & SELF-UPGRADING TESTS PASSED!")

@@ -28,7 +28,7 @@ export default function App() {
   // User Authentication & Persistent Memory
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('aura_user');
+      const saved = localStorage.getItem('clairvoyant_user') || localStorage.getItem('aura_user');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -70,10 +70,10 @@ export default function App() {
   // Helper to get persistent User ID (Google account or persistent device guest)
   const getUserId = useCallback(() => {
     if (currentUser?.user_id) return currentUser.user_id;
-    let guestId = localStorage.getItem('aura_guest_id');
+    let guestId = localStorage.getItem('clairvoyant_guest_id') || localStorage.getItem('aura_guest_id');
     if (!guestId) {
       guestId = 'guest_' + Math.random().toString(36).substring(2, 10);
-      localStorage.setItem('aura_guest_id', guestId);
+      localStorage.setItem('clairvoyant_guest_id', guestId); localStorage.setItem('aura_guest_id', guestId);
     }
     return guestId;
   }, [currentUser]);
@@ -162,7 +162,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
     try {
       const profile = await apiGoogleAuth(authData);
       setCurrentUser(profile);
-      localStorage.setItem('aura_user', JSON.stringify(profile));
+      localStorage.setItem('clairvoyant_user', JSON.stringify(profile)); localStorage.setItem('aura_user', JSON.stringify(profile));
       setUserMemory(profile);
 
       soundManager.playRevealFanfare();
@@ -183,7 +183,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('aura_user');
+    localStorage.removeItem('clairvoyant_user'); localStorage.removeItem('aura_user');
     setCurrentUser(null);
     setUserMemory(null);
     initSession();

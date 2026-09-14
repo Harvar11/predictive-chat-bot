@@ -111,7 +111,7 @@ export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 my-3">
                 <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
                   <span className="text-[10px] uppercase font-mono text-slate-400 block mb-1">
-                    AURA Pre-Sealed Prediction
+                    CLAIRVOYANT Pre-Sealed Prediction
                   </span>
                   <span className="text-base font-bold text-cyan-300 block">
                     "{msg.sealedPrediction}"

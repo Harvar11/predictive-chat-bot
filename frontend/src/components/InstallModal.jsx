@@ -17,10 +17,11 @@ export default function InstallModal({
   });
 
   const handleDownloadBat = () => {
+    const targetUrl = window.location.origin.includes('localhost') ? window.location.origin : 'https://clairvoyant-bj7z.onrender.com';
     const batContent = `@echo off
 title CLAIRVOYANT Desktop App
 echo Starting CLAIRVOYANT in Standalone App Window...
-start "" "chrome.exe" --app="https://clairvoyant-bj7z.onrender.com" || start "" "msedge.exe" --app="https://clairvoyant-bj7z.onrender.com" || start "" "https://clairvoyant-bj7z.onrender.com"
+start "" "chrome.exe" --app="${targetUrl}" || start "" "msedge.exe" --app="${targetUrl}" || start "" "${targetUrl}"
 exit
 `;
     const blob = new Blob([batContent], { type: 'application/x-bat' });
