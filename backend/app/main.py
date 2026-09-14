@@ -1,3 +1,4 @@
+import os
 import json
 import base64
 from fastapi import FastAPI, HTTPException, status
@@ -37,11 +38,10 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-@app.head("/")
 @app.get("/api")
 @app.head("/api")
 @app.get("/api/health")
+@app.head("/api/health")
 def health_check():
     return {
         "status": "healthy",
@@ -282,3 +282,44 @@ def reset_session(session_id: str, req: StartSessionRequest = StartSessionReques
         "phase": engine.phase if engine else "profiling",
         "question": q_payload
     }
+
+
+# Static Files & SPA Frontend Serving
+STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static"))
+
+if os.path.exists(STATIC_DIR):
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    assets_dir = os.path.join(STATIC_DIR, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/manifest.webmanifest")
+    def get_manifest():
+        return FileResponse(os.path.join(STATIC_DIR, "manifest.webmanifest"), media_type="application/manifest+json")
+
+    @app.get("/sw.js")
+    def get_sw():
+        return FileResponse(os.path.join(STATIC_DIR, "sw.js"), media_type="application/javascript")
+
+    @app.get("/favicon.ico")
+    def get_favicon():
+        fav = os.path.join(STATIC_DIR, "favicon-64.png")
+        if os.path.exists(fav):
+            return FileResponse(fav, media_type="image/png")
+        return FileResponse(os.path.join(STATIC_DIR, "icon.svg"), media_type="image/svg+xml")
+
+    @app.get("/")
+    def serve_root():
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+    @app.get("/{full_path:path}")
+    def catch_all_spa(full_path: str):
+        # Do not intercept /api calls
+        if full_path.startswith("api"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+        file_path = os.path.join(STATIC_DIR, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
