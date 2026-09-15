@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Sparkles, CheckCircle2, XCircle, Zap, Brain, RotateCcw, ArrowRight, Award } from 'lucide-react';
+import { Sparkles, CheckCircle2, XCircle, Zap, Brain, RotateCcw, ArrowRight, Award, Share2, Copy, Check } from 'lucide-react';
 import { soundManager } from '../utils/sound';
 
 export default function RevealModal({
@@ -9,6 +9,8 @@ export default function RevealModal({
   onClose,
   onRestart
 }) {
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       soundManager.playRevealFanfare();
@@ -26,16 +28,38 @@ export default function RevealModal({
 
   if (!isOpen || !revealData) return null;
 
-  const {
-    reason,
-    total_hits,
-    total_questions,
-    accuracy_percent,
-    max_streak,
-    archetype,
-    description,
-    history = []
-  } = revealData;
+  const reason = revealData.reason || revealData.reveal_reason || 'Cognitive milestone achieved! Full Telemetry Unlocked.';
+  const total_hits = revealData.total_hits ?? 0;
+  const total_questions = revealData.total_questions ?? 0;
+  const accuracy_percent = revealData.accuracy_percent ?? revealData.accuracy ?? 0;
+  const max_streak = revealData.max_streak ?? 0;
+  const archetype = revealData.archetype || revealData.persona || 'Adaptive Explorer';
+  const description = revealData.description || revealData.persona_description || 'Adaptive subconscious decision profile.';
+  const history = revealData.history || [];
+
+  const handleShare = async () => {
+    const text = `🧠 CLAIRVOYANT predicted my subconscious thoughts with ${accuracy_percent}% accuracy! Archetype: ${archetype} (Peak Streak: ${max_streak}). Can it read your mind?`;
+    const shareUrl = window.location.origin;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'CLAIRVOYANT Cognitive Mind Profile',
+          text: text,
+          url: shareUrl,
+        });
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+      }
+    }
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(`${text}\n${shareUrl}`);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      } catch {}
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-slate-950/80 backdrop-blur-md animate-fade-in">
@@ -146,6 +170,23 @@ export default function RevealModal({
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center gap-3">
+          <button
+            onClick={handleShare}
+            className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-950/50 transition active:scale-[0.98]"
+          >
+            {copied ? (
+              <>
+                <Check className="w-4 h-4 text-slate-950 stroke-[3]" />
+                Copied to Clipboard!
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+                Share Mind Profile
+              </>
+            )}
+          </button>
+
           <button
             onClick={onRestart}
             className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-purple-900/40 transition active:scale-[0.98]"

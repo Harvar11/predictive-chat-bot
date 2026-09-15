@@ -442,12 +442,61 @@ def test_dynamic_profiling_and_expanded_forces():
     print("\nALL DYNAMIC PROFILING & EXPANDED FORCING CATALOG TESTS PASSED!")
 
 
+def test_typo_tolerance_and_session_recovery():
+    print("\n=======================================================")
+    print(" TESTING TYPO TOLERANCE, LEVENSHTEIN & SESSION RECOVERY")
+    print("=======================================================")
+
+    from app.engine import evaluate_forcing_match, PredictiveEngine
+
+    # 1. Typo tolerance tests
+    hit1, _ = evaluate_forcing_match("1089.", "1089", ["1089"])
+    assert hit1 == True, "Punctuation stripping should match 1089."
+
+    hit2, _ = evaluate_forcing_match("10899", "1089", ["1089"])
+    assert hit2 == True, "Levenshtein distance <= 1 should match 10899"
+
+    hit3, _ = evaluate_forcing_match("elefant in denmark", "Elephant in Denmark", ["elephant", "denmark"])
+    assert hit3 == True, "Levenshtein distance <= 1 should match elefant in denmark"
+
+    hit4, _ = evaluate_forcing_match("cinamon", "cinnamon", ["cinnamon"])
+    assert hit4 == True, "Levenshtein distance <= 1 should match cinamon"
+
+    print("[OK] Typo-tolerance with Levenshtein <= 1 verified.")
+
+    # 2. Session recovery test: submit to non-existent session_id should recover instead of 404
+    recovered_sid = "non_existent_session_test_9999"
+    recovery_res = client.post("/api/session/answer", json={
+        "session_id": recovered_sid,
+        "choice_text": "Structured & Cautious"
+    })
+    assert recovery_res.status_code == 200, f"Expected 200 from graceful recovery, got {recovery_res.status_code}"
+    rec_json = recovery_res.json()
+    assert rec_json["session_id"] == recovered_sid
+    print("[OK] Graceful session recovery verified without 404.")
+
+    # 3. Verify get_reveal_summary returns consistent payload keys
+    engine = PredictiveEngine("test_reveal_sid")
+    engine.total_questions = 10
+    engine.total_hits = 8
+    summary = engine.get_reveal_summary()
+    assert "accuracy" in summary and "accuracy_percent" in summary
+    assert "persona" in summary and "archetype" in summary
+    assert "reason" in summary and "reveal_reason" in summary
+    assert summary["accuracy_percent"] == 80.0
+    print("[OK] Reveal summary key parity verified.")
+
+    print("\nALL TYPO TOLERANCE & SESSION RECOVERY TESTS PASSED!")
+
+
 if __name__ == "__main__":
     test_personality_driven_predictions_and_number_forces()
     test_user_persistence_google_auth_and_self_upgrading()
     test_password_security_and_authentication()
     test_auth_registration_login_and_progress_retention()
     test_dynamic_profiling_and_expanded_forces()
+    test_typo_tolerance_and_session_recovery()
+
 
 
 

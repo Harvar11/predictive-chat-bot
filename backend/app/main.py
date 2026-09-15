@@ -297,10 +297,8 @@ def start_session(req: StartSessionRequest = StartSessionRequest()):
 def submit_answer(req: AnswerRequest):
     engine = session_store.get_session(req.session_id)
     if not engine:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session expired or not found. Please start a new session."
-        )
+        # Gracefully re-hydrate the session to avoid 404 dead-ends during container restarts
+        engine = session_store.recover_session(session_id=req.session_id, user_id=req.user_id)
 
     # Sync user_id if provided
     if req.user_id and engine.user_id != req.user_id:
@@ -343,7 +341,7 @@ def submit_answer(req: AnswerRequest):
 def get_session_state(session_id: str):
     engine = session_store.get_session(session_id)
     if not engine:
-        raise HTTPException(status_code=404, detail="Session not found")
+        engine = session_store.recover_session(session_id=session_id)
 
     active_q = engine.get_active_question()
     q_payload = QuestionPayload(**active_q) if active_q else None
@@ -361,7 +359,7 @@ def get_session_state(session_id: str):
 def get_debug_state(session_id: str):
     engine = session_store.get_session(session_id)
     if not engine:
-        raise HTTPException(status_code=404, detail="Session not found")
+        engine = session_store.recover_session(session_id=session_id)
 
     return DebugStateResponse(
         session_id=session_id,
@@ -442,6 +440,7 @@ if os.path.exists(STATIC_DIR):
         return FileResponse(os.path.join(STATIC_DIR, "icon.svg"), media_type="image/svg+xml")
 
     @app.get("/")
+    @app.head("/")
     def serve_root():
         return FileResponse(
             os.path.join(STATIC_DIR, "index.html"),
@@ -449,6 +448,7 @@ if os.path.exists(STATIC_DIR):
         )
 
     @app.get("/{full_path:path}")
+    @app.head("/{full_path:path}")
     def catch_all_spa(full_path: str):
         # Do not intercept /api calls
         if full_path.startswith("api"):

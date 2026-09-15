@@ -7,6 +7,7 @@ import OptionPicker from './components/OptionPicker';
 import MindPeekHUD from './components/MindPeekHUD';
 import AuthModal from './components/AuthModal';
 import InstallModal from './components/InstallModal';
+import RevealModal from './components/RevealModal';
 import { soundManager } from './utils/sound';
 import {
   apiStartSession,
@@ -43,10 +44,13 @@ export default function App() {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-  // Mind-Peek telemetry unlock state (locked by default, unlocks after 3 streak or 10 questions)
+  // Mind-Peek telemetry unlock state & Grand Reveal Modal
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showMindPeek, setShowMindPeek] = useState(false);
   const [showLockModal, setShowLockModal] = useState(false);
+  const [showRevealModal, setShowRevealModal] = useState(false);
+  const [revealData, setRevealData] = useState(null);
+  const [lastSubmission, setLastSubmission] = useState(null);
   const [debugState, setDebugState] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,11 +65,12 @@ export default function App() {
 
   // Native Android Hardware Back Gesture & PopState Interception
   useEffect(() => {
-    const isAnyModalOpen = showMindPeek || showAuthModal || showInstallModal || showLockModal;
+    const isAnyModalOpen = showMindPeek || showAuthModal || showInstallModal || showLockModal || showRevealModal;
     if (isAnyModalOpen) {
       window.history.pushState({ modalOpen: true }, '');
     }
     const handlePopState = () => {
+      if (showRevealModal) setShowRevealModal(false);
       if (showMindPeek) setShowMindPeek(false);
       if (showAuthModal) setShowAuthModal(false);
       if (showInstallModal) setShowInstallModal(false);
@@ -73,7 +78,7 @@ export default function App() {
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [showMindPeek, showAuthModal, showInstallModal, showLockModal]);
+  }, [showMindPeek, showAuthModal, showInstallModal, showLockModal, showRevealModal]);
 
   const handlePromptInstall = async () => {
     if (deferredPrompt) {
@@ -232,10 +237,20 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
   };
 
   // Handle user selecting an option or typing freeform text
+  const handleRetryLast = () => {
+    if (lastSubmission && currentQuestion) {
+      handleSelectOption(lastSubmission.choiceIndex, lastSubmission.choiceText);
+    } else {
+      initSession();
+    }
+  };
+
+  // Handle user selecting an option or typing freeform text
   const handleSelectOption = async (choiceIndex, choiceText) => {
     if (!sessionId || !currentQuestion || isThinking) return;
 
     soundManager.playTap();
+    setLastSubmission({ choiceIndex, choiceText });
 
     // Add user response bubble to feed
     const userMsg = {
@@ -276,6 +291,8 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
       // Check if reveal milestone was triggered (3 streak or 10 questions)
       if (res.is_reveal && res.reveal_data) {
         setIsUnlocked(true);
+        setRevealData(res.reveal_data);
+        setShowRevealModal(true);
 
         try {
           confetti({
@@ -329,7 +346,9 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         {
           id: `err-${Date.now()}`,
           role: 'system',
-          text: 'Error transmitting response to neural engine. Please retry.'
+          isError: true,
+          text: 'Connection interrupted while transmitting response to neural engine.',
+          onRetry: () => handleSelectOption(choiceIndex, choiceText)
         }
       ]);
     } finally {
@@ -385,6 +404,11 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
             messages={messages}
             isThinking={isThinking}
             onOpenMindPeek={handleToggleMindPeek}
+            onOpenRevealModal={(data) => {
+              setRevealData(data || revealData);
+              setShowRevealModal(true);
+            }}
+            onRetryLast={handleRetryLast}
           />
 
           {/* Option Picker & Freeform Forcing Input */}
@@ -468,6 +492,14 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         onClose={() => setShowInstallModal(false)}
         deferredPrompt={deferredPrompt}
         onPromptInstall={handlePromptInstall}
+      />
+
+      {/* Grand Mind Profile Reveal Modal */}
+      <RevealModal
+        isOpen={showRevealModal}
+        revealData={revealData}
+        onClose={() => setShowRevealModal(false)}
+        onRestart={initSession}
       />
     </div>
   );

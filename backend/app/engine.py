@@ -741,6 +741,24 @@ FORCING_TRIALS_MASTER = [
 ]
 
 
+def levenshtein_distance(s1: str, s2: str) -> int:
+    """Calculates Levenshtein edit distance between two strings."""
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous_row = list(range(len(s2) + 1))
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
+
+
 def normalize_text(text: str) -> str:
     if not text:
         return ""
@@ -756,33 +774,53 @@ def evaluate_forcing_match(user_text: str, target: str, synonyms: List[str], sec
         return False, "diverged"
 
     norm_target = normalize_text(target)
-    norm_synonyms = [normalize_text(s) for s in synonyms]
+    norm_synonyms = [normalize_text(s) for s in synonyms if s]
 
     # 1. Exact match with target or primary synonyms
     if norm_user == norm_target or norm_user in norm_synonyms:
         return True, "high"
 
     # 2. Whole phrase / token regex match
-    for syn in norm_synonyms:
+    for syn in [norm_target] + norm_synonyms:
+        if not syn:
+            continue
         pattern = r'\b' + re.escape(syn) + r'\b'
         if re.search(pattern, norm_user):
             return True, "high"
 
-    # 3. Token subset match for multi-word targets
+    # 3. Token subset match for multi-word targets (e.g., "elephant in denmark")
     target_tokens = set(norm_target.split())
     user_tokens = set(norm_user.split())
     if len(target_tokens) > 1 and target_tokens.issubset(user_tokens):
         return True, "high"
 
-    # 4. Secondary fallback match
-    norm_secondary = [normalize_text(s) for s in secondary]
+    # 4. Levenshtein edit-distance typo tolerance (distance <= 1 for tokens of length >= 3)
+    if len(norm_target) >= 3 and levenshtein_distance(norm_user, norm_target) <= 1:
+        return True, "high"
+
+    for syn in norm_synonyms:
+        if len(syn) >= 3 and levenshtein_distance(norm_user, syn) <= 1:
+            return True, "high"
+
+    # Check typo distance across individual tokens for single-word targets (e.g., "10899", "elefant")
+    if len(norm_target.split()) == 1 and len(norm_target) >= 3:
+        for u_tok in user_tokens:
+            if len(u_tok) >= 3 and levenshtein_distance(u_tok, norm_target) <= 1:
+                return True, "high"
+
+    # 5. Secondary fallback match
+    norm_secondary = [normalize_text(s) for s in secondary if s]
     for sec in norm_secondary:
+        if not sec:
+            continue
         pattern = r'\b' + re.escape(sec) + r'\b'
         if re.search(pattern, norm_user):
             return True, "medium"
+        if len(sec) >= 3 and levenshtein_distance(norm_user, sec) <= 1:
+            return True, "medium"
 
-    # 5. Substring containment
-    for syn in norm_synonyms:
+    # 6. Substring containment (minimum 4 characters)
+    for syn in [norm_target] + norm_synonyms:
         if len(syn) >= 4 and syn in norm_user:
             return True, "high"
 
@@ -1146,10 +1184,14 @@ class PredictiveEngine:
             "total_questions": total,
             "total_hits": hits,
             "accuracy": accuracy,
+            "accuracy_percent": accuracy,
             "max_streak": self.max_streak,
             "persona": self.persona,
+            "archetype": self.persona,
             "persona_description": self.persona_description,
+            "description": self.persona_description,
             "reveal_reason": self.reveal_reason or "Calibration complete.",
+            "reason": self.reveal_reason or "Calibration complete.",
             "history": self.history,
             "verifications": [
                 {

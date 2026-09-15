@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Cpu, User, Compass, Zap, Brain, CheckCircle2, XCircle, Unlock, Lock, Sparkles, ShieldCheck } from 'lucide-react';
+import { Cpu, User, Compass, Zap, Brain, CheckCircle2, XCircle, Unlock, Lock, Sparkles, ShieldCheck, ArrowRight, RotateCcw, AlertCircle } from 'lucide-react';
 
-export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
+export default function ChatFeed({ messages, isThinking, onOpenMindPeek, onOpenRevealModal, onRetryLast }) {
   const feedEndRef = useRef(null);
 
   useEffect(() => {
@@ -10,6 +10,27 @@ export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
 
   return (
     <div className="flex-1 overflow-y-auto px-3 py-3.5 sm:px-6 sm:py-5 space-y-3.5 sm:space-y-5 touch-pan-y overscroll-y-auto">
+      {/* Cold Start Awakening Loader */}
+      {messages.length === 0 && (
+        <div className="flex flex-col items-center justify-center my-auto py-12 px-4 text-center animate-fade-in max-w-md mx-auto">
+          <div className="relative mb-5">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600/30 to-cyan-500/30 border border-cyan-500/40 flex items-center justify-center shadow-lg shadow-cyan-950/50">
+              <Cpu className="w-8 h-8 text-cyan-400 animate-pulse" />
+            </div>
+            <div className="absolute -inset-2 rounded-3xl border border-cyan-500/25 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />
+          </div>
+          <h3 className="text-base sm:text-lg font-bold text-white mb-2 tracking-wide">
+            Awakening Neural Core...
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed mb-4">
+            Establishing connection to CLAIRVOYANT predictive engines and calibrating cryptographic seals.
+          </p>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-[11px] text-cyan-300 font-mono shadow-inner">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            Synchronizing Neural Matrix...
+          </div>
+        </div>
+      )}
       {messages.map((msg) => {
         // Bot Question Bubble
         if (msg.role === 'bot') {
@@ -144,8 +165,31 @@ export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
           );
         }
 
-        // System Progress Pill
+        // System Progress or Error Message
         if (msg.role === 'system') {
+          const isError = msg.isError || msg.text?.toLowerCase().includes('error') || msg.text?.toLowerCase().includes('failed') || msg.text?.toLowerCase().includes('retry');
+          if (isError) {
+            return (
+              <div key={msg.id} className="flex flex-col items-center my-3 max-w-md mx-auto animate-fade-in">
+                <div className="w-full p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-xs text-rose-200 shadow-md flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-rose-200">{msg.text}</p>
+                    {(msg.onRetry || onRetryLast) && (
+                      <button
+                        onClick={msg.onRetry || onRetryLast}
+                        className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 font-semibold text-[11px] transition shadow-sm"
+                      >
+                        <RotateCcw className="w-3 h-3 text-rose-300" />
+                        Tap to Retry
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div key={msg.id} className="flex justify-center my-3 animate-fade-in">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-xs text-slate-400 shadow-sm">
@@ -156,17 +200,24 @@ export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
           );
         }
 
-        // Grand Reveal Card (3-Streak Unlock)
+        // Grand Reveal Card (3-Streak or 10-Trial Milestone)
         if (msg.role === 'reveal') {
           const r = msg.data || {};
+          const accuracy = r.accuracy_percent ?? r.accuracy ?? 0;
+          const archetype = r.archetype ?? r.persona ?? 'Adaptive Explorer';
+          const reason = r.reason ?? r.reveal_reason ?? 'Cognitive Milestone Achieved';
+          const totalHits = r.total_hits ?? 0;
+          const totalQ = r.total_questions ?? 0;
+          const maxStreak = r.max_streak ?? 0;
+
           return (
             <div key={msg.id} className="my-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 via-slate-900/90 to-cyan-950/40 border border-cyan-500/40 shadow-xl shadow-purple-950/30 animate-fade-in">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
                   <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                   COGNITIVE SYNCHRONIZATION UNLOCKED
                 </span>
-                <span className="text-xs text-slate-400">• {r.reason}</span>
+                <span className="text-xs text-slate-400">• {reason}</span>
               </div>
 
               <h3 className="text-base sm:text-lg font-bold text-white mb-2">
@@ -176,32 +227,43 @@ export default function ChatFeed({ messages, isThinking, onOpenMindPeek }) {
               <div className="grid grid-cols-3 gap-2 my-3">
                 <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
                   <span className="text-[10px] uppercase font-mono text-slate-400 block">Accuracy</span>
-                  <span className="text-base sm:text-lg font-extrabold text-cyan-400">{r.accuracy_percent}%</span>
+                  <span className="text-base sm:text-lg font-extrabold text-cyan-400">{accuracy}%</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
                   <span className="text-[10px] uppercase font-mono text-slate-400 block">Hits</span>
-                  <span className="text-base sm:text-lg font-extrabold text-purple-300">{r.total_hits} / {r.total_questions}</span>
+                  <span className="text-base sm:text-lg font-extrabold text-purple-300">{totalHits} / {totalQ}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-center">
                   <span className="text-[10px] uppercase font-mono text-slate-400 block">Peak Streak</span>
-                  <span className="text-base sm:text-lg font-extrabold text-amber-400">{r.max_streak}</span>
+                  <span className="text-base sm:text-lg font-extrabold text-amber-400">{maxStreak}</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
+              <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs flex-wrap gap-2">
                 <div className="flex items-center gap-1.5 text-slate-300">
                   <Brain className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Archetype: <strong className="text-purple-300">{r.archetype}</strong></span>
+                  <span>Archetype: <strong className="text-purple-300">{archetype}</strong></span>
                 </div>
-                {onOpenMindPeek && (
-                  <button
-                    onClick={onOpenMindPeek}
-                    className="inline-flex items-center gap-1 font-semibold text-cyan-400 hover:text-cyan-300 underline underline-offset-4"
-                  >
-                    <Unlock className="w-3 h-3" />
-                    Open Mind Peek
-                  </button>
-                )}
+                <div className="flex items-center gap-2.5">
+                  {onOpenRevealModal && (
+                    <button
+                      onClick={() => onOpenRevealModal(r)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-purple-600/40 to-cyan-600/40 hover:from-purple-600/60 hover:to-cyan-600/60 text-cyan-200 border border-cyan-500/40 font-semibold transition"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-300" />
+                      View Full Report Card
+                    </button>
+                  )}
+                  {onOpenMindPeek && (
+                    <button
+                      onClick={onOpenMindPeek}
+                      className="inline-flex items-center gap-1 font-semibold text-cyan-400 hover:text-cyan-300 underline underline-offset-4"
+                    >
+                      <Unlock className="w-3 h-3" />
+                      Open Mind Peek
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
