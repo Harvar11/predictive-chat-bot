@@ -317,6 +317,20 @@ def test_auth_registration_login_and_progress_retention():
     assert reloaded["total_trials"] >= 1
     print(f"[OK] Lifetime progress retained across logins: {reloaded['total_trials']} total trials recorded.")
 
+    # 8. Sign in via Google using the same email (tests email collision & account merge)
+    google_res = client.post("/api/auth/google", json={
+        "user_id": f"google_oauth_{ts}",
+        "email": email,
+        "name": "Alpha Voyager Google",
+        "picture": "https://lh3.googleusercontent.com/a/google_avatar"
+    })
+    assert google_res.status_code == 200, f"Google auth failed on existing email: {google_res.text}"
+    google_data = google_res.json()
+    assert google_data["user_id"] == user_id
+    assert google_data["username"] == username
+    assert google_data["total_trials"] >= 1
+    print("[OK] Google Sign-In with already-registered email resolved cleanly without IntegrityError.")
+
     print("\nALL USER AUTH & REGISTRATION TESTS PASSED!")
 
 

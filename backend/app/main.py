@@ -185,7 +185,8 @@ def google_auth(req: GoogleAuthRequest):
             pass  # Fall back to supplied fields if JWT decode fails
 
     if not user_id:
-        user_id = f"user_{int(hash(email or name or 'guest')) & 0xFFFFFFFF}"
+        clean_key = (email or name or 'guest').lower()
+        user_id = f"google_{hashlib.md5(clean_key.encode('utf-8')).hexdigest()[:12]}"
 
     try:
         user_data = get_or_create_user(
@@ -205,7 +206,7 @@ def google_auth(req: GoogleAuthRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(val_err)
         )
-    user_memory = get_user_memory(user_id)
+    user_memory = get_user_memory(user_data["user_id"])
 
     return UserProfileResponse(
         user_id=user_data["user_id"],

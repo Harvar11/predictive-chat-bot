@@ -9,7 +9,7 @@ export default function AuthModal({
 }) {
   if (!isOpen) return null;
 
-  const [activeTab, setActiveTab] = useState('login'); // 'login' | 'signup'
+  const [activeTab, setActiveTab] = useState('login'); // 'login' | 'signup' | 'google'
   
   // Login form state
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -22,6 +22,10 @@ export default function AuthModal({
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [signupUsername, setSignupUsername] = useState('');
   const [signupName, setSignupName] = useState('');
+
+  // Google Sign-In state
+  const [googleEmail, setGoogleEmail] = useState('');
+  const [googleName, setGoogleName] = useState('');
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -177,35 +181,50 @@ export default function AuthModal({
     }
   };
 
-  // Fallback 1-click Google Sign-In button handler if GSI widget is not loaded
-  const handleQuickGoogleAuth = async () => {
+  // Switch to dedicated in-modal Google Sign-In panel
+  const handleOpenGoogleAuth = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+    if (clientId && window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.prompt();
+        return;
+      } catch (e) {}
+    }
+    setActiveTab('google');
+    setError('');
+  };
+
+  // Submit in-modal Google Sign-In
+  const handleGoogleSubmit = async (e) => {
+    e?.preventDefault();
+    const cleanEmail = googleEmail.trim().toLowerCase();
+    if (!cleanEmail) {
+      setError('Please enter your Google account email');
+      return;
+    }
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setError('Please enter a valid email address (e.g. name@gmail.com)');
+      return;
+    }
+
     setLoading(true);
     setError('');
+
     try {
-      const promptEmail = prompt("Enter your Google Account Email for instant authentication:");
-      if (!promptEmail) {
-        setLoading(false);
-        return;
-      }
-      const cleanEmail = promptEmail.trim().toLowerCase();
-      if (!cleanEmail.includes('@')) {
-        setError('Invalid email address format.');
-        setLoading(false);
-        return;
-      }
       const derivedUser = cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
+      const derivedName = googleName.trim() || derivedUser.replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
       await onLoginSuccess({
         type: 'google',
         data: {
           user_id: `google_${derivedUser}`,
           email: cleanEmail,
-          name: derivedUser,
-          picture: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(derivedUser)}`
+          name: derivedName,
+          picture: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`
         }
       });
       onClose();
     } catch (err) {
-      setError(err.message || 'Google authentication failed.');
+      setError(err.message || 'Google authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -243,7 +262,7 @@ export default function AuthModal({
           </div>
         </div>
 
-        {/* Tab Switcher: Log In vs Sign Up */}
+        {/* Tab Switcher: Log In vs Sign Up vs Google */}
         <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800 text-xs font-semibold">
           <button
             type="button"
@@ -269,48 +288,69 @@ export default function AuthModal({
             <UserPlus className="w-3.5 h-3.5" />
             <span>Sign Up</span>
           </button>
-        </div>
-
-        {/* Google Authentication Option */}
-        <div className="space-y-2 pt-1">
-          <div ref={gsiButtonRef} className="flex justify-center empty:hidden" />
-          
           <button
             type="button"
-            onClick={handleQuickGoogleAuth}
-            disabled={loading}
-            className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-medium text-xs flex items-center justify-center gap-2.5 transition shadow-sm"
+            onClick={() => handleTabSwitch('google')}
+            className={`flex-1 py-2 rounded-lg transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'google'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+              <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
             </svg>
-            <span>{activeTab === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}</span>
+            <span>Google</span>
           </button>
         </div>
 
+        {/* Google Authentication Option (Shown on Login / Signup tabs) */}
+        {activeTab !== 'google' && (
+          <div className="space-y-2 pt-1">
+            <div ref={gsiButtonRef} className="flex justify-center empty:hidden" />
+            
+            <button
+              type="button"
+              onClick={handleOpenGoogleAuth}
+              disabled={loading}
+              className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-medium text-xs flex items-center justify-center gap-2.5 transition shadow-sm"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>{activeTab === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}</span>
+            </button>
+          </div>
+        )}
+
         {/* Divider */}
-        <div className="relative flex py-1 items-center">
-          <div className="flex-grow border-t border-slate-800"></div>
-          <span className="flex-shrink mx-3 text-[10px] uppercase font-mono tracking-wider text-slate-500">
-            {activeTab === 'signup' ? 'or register with email' : 'or log in with credentials'}
-          </span>
-          <div className="flex-grow border-t border-slate-800"></div>
-        </div>
+        {activeTab !== 'google' && (
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-slate-800"></div>
+            <span className="flex-shrink mx-3 text-[10px] uppercase font-mono tracking-wider text-slate-500">
+              {activeTab === 'signup' ? 'or register with email' : 'or log in with credentials'}
+            </span>
+            <div className="flex-grow border-t border-slate-800"></div>
+          </div>
+        )}
 
         {/* Error Notice Banner */}
         {error && (
@@ -494,6 +534,97 @@ export default function AuthModal({
                 className="text-xs text-cyan-300 hover:text-cyan-200 transition"
               >
                 Already have an account? <span className="underline font-semibold">Log In</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* TAB 3: GOOGLE AUTH FORM */}
+        {activeTab === 'google' && (
+          <form onSubmit={handleGoogleSubmit} className="space-y-3.5 animate-fade-in">
+            <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center space-y-1.5 shadow-sm">
+              <div className="w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mx-auto shadow-md">
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+              </div>
+              <p className="text-xs font-bold text-white">Google Identity Authorization</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Connect your Google account to automatically synchronize your predictive accuracy and cognitive history.
+              </p>
+            </div>
+
+            <div ref={gsiButtonRef} className="flex justify-center empty:hidden" />
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-medium text-slate-300 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-cyan-400" />
+                  Google Account Email
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!googleEmail.includes('@')) {
+                      setGoogleEmail((prev) => (prev.trim() ? `${prev.trim()}@gmail.com` : ''));
+                    }
+                  }}
+                  className="text-[10px] text-cyan-400 hover:text-cyan-300 font-mono"
+                >
+                  + @gmail.com
+                </button>
+              </div>
+              <input
+                type="email"
+                value={googleEmail}
+                onChange={(e) => {
+                  setGoogleEmail(e.target.value);
+                  setError('');
+                }}
+                placeholder="name@gmail.com"
+                required
+                autoFocus
+                className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                Display Name <span className="text-slate-500 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={googleName}
+                onChange={(e) => setGoogleName(e.target.value)}
+                placeholder="Your preferred name"
+                className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-slate-600 transition"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-950/40 transition active:scale-[0.98] disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#ffffff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#ffffff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#ffffff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#ffffff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>{loading ? 'Authenticating with Google...' : 'Authorize & Sign In with Google'}</span>
+            </button>
+
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => handleTabSwitch('login')}
+                className="text-xs text-slate-400 hover:text-slate-200 transition"
+              >
+                ← Return to standard Log In / Sign Up
               </button>
             </div>
           </form>

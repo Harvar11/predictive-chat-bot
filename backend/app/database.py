@@ -251,27 +251,35 @@ def get_or_create_user(
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    clean_email = email.strip().lower() if email and email.strip() else None
+
+    # 1. Look up by user_id
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     row = cursor.fetchone()
 
+    # 2. If not found by user_id, check if user exists with this email (e.g. Google Sign-In on registered email)
+    if not row and clean_email:
+        cursor.execute("SELECT * FROM users WHERE LOWER(email) = ?", (clean_email,))
+        row = cursor.fetchone()
+
     now = time.time()
     if row:
+        canonical_user_id = row["user_id"]
         stored_hash = row["password_hash"]
         if password is not None:
             if stored_hash and not verify_password(password, stored_hash):
                 conn.close()
                 raise ValueError("INVALID_PASSWORD")
             elif not stored_hash:
-                # First time user is setting a password on an existing profile
                 new_hash = hash_password(password)
-                cursor.execute("UPDATE users SET password_hash = ? WHERE user_id = ?", (new_hash, user_id))
+                cursor.execute("UPDATE users SET password_hash = ? WHERE user_id = ?", (new_hash, canonical_user_id))
                 conn.commit()
 
         # Check if username is missing on existing user
         if not row["username"]:
-            base_un = (name or email or row["name"] or "explorer").split("@")[0]
+            base_un = (name or clean_email or row["name"] or "explorer").split("@")[0]
             new_un = generate_unique_username(cursor, base_un)
-            cursor.execute("UPDATE users SET username = ? WHERE user_id = ?", (new_un, user_id))
+            cursor.execute("UPDATE users SET username = ? WHERE user_id = ?", (new_un, canonical_user_id))
             conn.commit()
 
         # Update last seen and any updated profile info
@@ -282,16 +290,16 @@ def get_or_create_user(
             name = COALESCE(?, name),
             avatar_url = COALESCE(?, avatar_url)
         WHERE user_id = ?
-        """, (now, email, name, avatar_url, user_id))
+        """, (now, clean_email, name, avatar_url, canonical_user_id))
         conn.commit()
-        cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+        cursor.execute("SELECT * FROM users WHERE user_id = ?", (canonical_user_id,))
         updated_row = cursor.fetchone()
         conn.close()
         return dict(updated_row)
     else:
         # Create new user with unique username
-        display_name = name or (f"Guest-{user_id[:6]}" if user_id.startswith("guest_") else "Cognitive Explorer")
-        base_un = (name or email or f"guest_{user_id[:6]}").split("@")[0]
+        display_name = name or (clean_email.split("@")[0] if clean_email else (f"Guest-{user_id[:6]}" if user_id.startswith("guest_") else "Cognitive Explorer"))
+        base_un = (name or clean_email or f"guest_{user_id[:6]}").split("@")[0]
         assigned_un = generate_unique_username(cursor, base_un)
         new_pwd_hash = hash_password(password) if password else None
         cursor.execute("""
@@ -300,9 +308,9 @@ def get_or_create_user(
         """, (
             user_id,
             assigned_un,
-            email,
+            clean_email,
             display_name,
-            avatar_url or "",
+            avatar_url or f"https://api.dicebear.com/7.x/bottts/svg?seed={assigned_un}",
             new_pwd_hash,
             now,
             now,
