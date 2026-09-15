@@ -9,7 +9,9 @@ import AuthModal from './components/AuthModal';
 import InstallModal from './components/InstallModal';
 import RevealModal from './components/RevealModal';
 import EditUsernameModal from './components/EditUsernameModal';
+import HistoryModal from './components/HistoryModal';
 import { soundManager } from './utils/sound';
+import { saveDeviceAccount } from './utils/accountManager';
 import {
   apiStartSession,
   apiSubmitAnswer,
@@ -26,6 +28,7 @@ export default function App() {
   const [sessionId, setSessionId] = useState(null);
   const [phase, setPhase] = useState('profiling');
   const [persona, setPersona] = useState(null);
+  const [currentStreak, setCurrentStreak] = useState(0);
   const [messages, setMessages] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isThinking, setIsThinking] = useState(false);
@@ -43,8 +46,10 @@ export default function App() {
   const [userMemory, setUserMemory] = useState(null);
   const [modelVersion, setModelVersion] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState('login');
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [showEditUsernameModal, setShowEditUsernameModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   // Mind-Peek telemetry unlock state & Grand Reveal Modal
@@ -68,7 +73,7 @@ export default function App() {
 
   // Native Android Hardware Back Gesture & PopState Interception
   useEffect(() => {
-    const isAnyModalOpen = showMindPeek || showAuthModal || showInstallModal || showLockModal || showRevealModal || showEditUsernameModal;
+    const isAnyModalOpen = showMindPeek || showAuthModal || showInstallModal || showLockModal || showRevealModal || showEditUsernameModal || showHistoryModal;
     if (isAnyModalOpen) {
       window.history.pushState({ modalOpen: true }, '');
     }
@@ -79,10 +84,11 @@ export default function App() {
       if (showInstallModal) setShowInstallModal(false);
       if (showLockModal) setShowLockModal(false);
       if (showEditUsernameModal) setShowEditUsernameModal(false);
+      if (showHistoryModal) setShowHistoryModal(false);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [showMindPeek, showAuthModal, showInstallModal, showLockModal, showRevealModal, showEditUsernameModal]);
+  }, [showMindPeek, showAuthModal, showInstallModal, showLockModal, showRevealModal, showEditUsernameModal, showHistoryModal]);
 
   const handlePromptInstall = async () => {
     if (deferredPrompt) {
@@ -210,6 +216,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         localStorage.setItem('aura_user', JSON.stringify(profile));
       } catch {}
       setUserMemory(profile);
+      saveDeviceAccount(profile);
 
       soundManager.playRevealFanfare();
 
@@ -217,15 +224,59 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
       const syncMsg = {
         id: `auth-${Date.now()}`,
         role: 'system',
-        text: `🔐 Synchronized profile: ${displayHandle}. Recalling ${profile.total_trials} lifetime trials (${profile.accuracy_percent}% accuracy).`,
+        text: `🔐 Synchronized profile: ${displayHandle}. Recalling ${profile.total_trials || 0} lifetime trials (${profile.accuracy_percent || 0}% accuracy).`,
       };
       setMessages((prev) => [...prev, syncMsg]);
 
       if (sessionId) {
         await refreshDebug(sessionId);
       }
+      return profile;
     } catch (err) {
       console.error('Auth error:', err);
+      throw err;
+    }
+  };
+
+  // Spotify-style 1-click multi-account switch handler
+  const handleSwitchAccount = async (account) => {
+    try {
+      let profile = account;
+      if (account.user_id) {
+        try {
+          const fresh = await apiGetUserMemory(account.user_id);
+          if (fresh) {
+            profile = { ...profile, ...fresh };
+          }
+        } catch (e) {
+          console.debug('Fresh memory load notice:', e);
+        }
+      }
+
+      setCurrentUser(profile);
+      try {
+        localStorage.setItem('clairvoyant_user', JSON.stringify(profile));
+        localStorage.setItem('aura_user', JSON.stringify(profile));
+      } catch {}
+      setUserMemory(profile);
+      saveDeviceAccount(profile);
+
+      soundManager.playRevealFanfare();
+
+      const displayHandle = profile.username ? `@${profile.username}` : (profile.name || 'User');
+      const switchMsg = {
+        id: `switch-${Date.now()}`,
+        role: 'system',
+        text: `👥 Switched account to ${displayHandle}. Recalling ${profile.total_trials || 0} lifetime trials (${profile.accuracy_percent || 0}% accuracy).`,
+      };
+      setMessages((prev) => [...prev, switchMsg]);
+
+      if (sessionId) {
+        await refreshDebug(sessionId);
+      }
+      return profile;
+    } catch (err) {
+      console.error('Switch account error:', err);
       throw err;
     }
   };
@@ -303,6 +354,38 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
           text: `🧠 Neural baseline calibrated. Persona: ${res.persona || 'Adaptive'}. Commencing Subconscious Forcing Trials.`,
         };
         setMessages((prev) => [...prev, sysMsg]);
+      }
+
+      // Turn-by-turn forcing verification reveal card
+      if (res.sealed_prediction && res.is_hit !== undefined && res.is_hit !== null) {
+        if (res.is_hit) {
+          const nextStreak = typeof res.current_streak === 'number' ? res.current_streak : currentStreak + 1;
+          setCurrentStreak(nextStreak);
+          soundManager.playHitChime();
+          try {
+            confetti({
+              particleCount: 40,
+              spread: 60,
+              origin: { y: 0.8 },
+              colors: ['#06b6d4', '#8b5cf6', '#10b981']
+            });
+          } catch (e) {}
+        } else {
+          setCurrentStreak(0);
+          soundManager.playDivergence();
+        }
+
+        const forceMsg = {
+          id: `force-${Date.now()}`,
+          role: 'forcing_result',
+          isHit: res.is_hit,
+          streak: typeof res.current_streak === 'number' ? res.current_streak : 0,
+          sealedPrediction: res.sealed_prediction,
+          userTyped: choiceText,
+          insight: res.psychological_insight,
+          sealedHash: res.sealed_hash,
+        };
+        setMessages((prev) => [...prev, forceMsg]);
       }
 
       // Check if neural model upgrade event occurred
@@ -403,6 +486,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
       <ChatHeader
         phase={phase}
         persona={persona}
+        currentStreak={currentStreak}
         showMindPeek={showMindPeek}
         onToggleMindPeek={handleToggleMindPeek}
         isUnlocked={isUnlocked}
@@ -411,9 +495,17 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         onReset={initSession}
         loading={loading}
         currentUser={currentUser}
-        onOpenAuth={() => setShowAuthModal(true)}
+        onOpenAuth={(mode) => {
+          setAuthModalMode(mode || 'login');
+          setShowAuthModal(true);
+        }}
+        onOpenSwitchAccount={() => {
+          setAuthModalMode('switch_account');
+          setShowAuthModal(true);
+        }}
         onLogout={handleLogout}
         onOpenEditUsername={() => setShowEditUsernameModal(true)}
+        onOpenHistory={() => setShowHistoryModal(true)}
         userMemory={userMemory}
         modelVersion={modelVersion}
         onOpenInstall={() => setShowInstallModal(true)}
@@ -463,13 +555,16 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         )}
       </main>
 
-      {/* User Authentication Modal (Login / Sign Up / Guest) */}
+      {/* User Authentication & Account Switcher Modal (Spotify-Authentic) */}
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onLoginSuccess={handleLoginSuccess}
         currentUser={currentUser}
+        initialMode={authModalMode}
+        onSwitchAccount={handleSwitchAccount}
         onOpenEditUsername={() => setShowEditUsernameModal(true)}
+        onLogout={handleLogout}
       />
 
       {/* Mind-Peek Locked Notice Dialog */}
@@ -532,6 +627,14 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         currentUsername={currentUser?.username}
         onClose={() => setShowEditUsernameModal(false)}
         onUpdateUsername={handleUpdateUsername}
+      />
+
+      {/* Cognitive Dossier / Trial History Modal */}
+      <HistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        userMemory={userMemory}
+        currentUser={currentUser}
       />
     </div>
   );

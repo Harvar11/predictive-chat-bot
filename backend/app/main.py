@@ -54,9 +54,30 @@ app.add_middleware(
 @app.get("/api/health")
 @app.head("/api/health")
 def health_check():
+    db_ok = True
+    total_users = 0
+    total_trials = 0
+    try:
+        from app.database import get_db_connection
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) as u_cnt FROM users")
+        total_users = c.fetchone()["u_cnt"]
+        c.execute("SELECT COUNT(*) as t_cnt FROM trial_inputs")
+        total_trials = c.fetchone()["t_cnt"]
+        conn.close()
+    except Exception:
+        db_ok = False
+
+    evo = get_model_evolution()
     return {
-        "status": "healthy",
+        "status": "healthy" if db_ok else "degraded",
         "service": "clairvoyant-api",
+        "database": "sqlite-wal" if db_ok else "error",
+        "total_users": total_users,
+        "total_trials_recorded": total_trials,
+        "model_version": evo.get("version", "v2.0"),
+        "model_generation": evo.get("generation", 1),
         "message": "CLAIRVOYANT Predictive Cognition API is live and operational."
     }
 
@@ -339,6 +360,30 @@ def start_session(req: StartSessionRequest = StartSessionRequest()):
         message=welcome_msg,
         question=q_payload,
         user_profile=engine.user_record,
+        user_memory=user_mem,
+        model_version=evo.get("version")
+    )
+
+
+@app.post("/api/session/{session_id}/reset", response_model=StartSessionResponse)
+def reset_session_endpoint(session_id: str):
+    """Resets an active session to question 1 while preserving the user context."""
+    engine = session_store.get_session(session_id)
+    user_id = engine.user_id if engine else None
+    session_store.reset_session(session_id=session_id, user_id=user_id)
+    engine = session_store.get_session(session_id)
+    
+    first_q = engine.get_active_question() if engine else None
+    q_payload = QuestionPayload(**first_q) if first_q else None
+    user_mem = get_user_memory(user_id) if user_id else {}
+    evo = get_model_evolution()
+
+    return StartSessionResponse(
+        session_id=session_id,
+        phase=engine.phase if engine else "profiling",
+        message="Session restarted. Recalibrating psychometric baseline.",
+        question=q_payload,
+        user_profile=engine.user_record if engine else {},
         user_memory=user_mem,
         model_version=evo.get("version")
     )

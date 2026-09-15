@@ -139,17 +139,30 @@ export default function OptionPicker({
                 type="text"
                 value={typedInput}
                 onChange={(e) => setTypedInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setTypedInput('');
+                }}
                 onFocus={() => {
                   setTimeout(() => inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 300);
                 }}
                 disabled={disabled}
                 placeholder={isFreeformOnly ? placeholder : 'Or type your own response...'}
-                className={`w-full bg-slate-950/90 border rounded-xl sm:rounded-2xl px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none transition shadow-inner ${
+                className={`w-full bg-slate-950/90 border rounded-xl sm:rounded-2xl pl-3.5 pr-8 py-2 sm:py-2.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none transition shadow-inner ${
                   isFreeformOnly
                     ? 'border-cyan-500/50 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 shadow-cyan-950/30'
                     : 'border-slate-800 focus:border-purple-500/70 focus:ring-1 focus:ring-purple-500/50'
                 }`}
               />
+              {typedInput && (
+                <button
+                  type="button"
+                  onClick={() => setTypedInput('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5 text-xs rounded-full hover:bg-slate-800 transition"
+                  title="Clear text"
+                >
+                  &times;
+                </button>
+              )}
             </div>
 
             <button
@@ -176,10 +189,23 @@ export default function OptionPicker({
                   type="text"
                   value={typedInput}
                   onChange={(e) => setTypedInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setTypedInput('');
+                  }}
                   disabled={disabled}
                   placeholder="Or type your own response..."
-                  className="w-full bg-slate-950/90 border border-slate-800 focus:border-purple-500/70 focus:ring-1 focus:ring-purple-500/50 rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none transition shadow-inner"
+                  className="w-full bg-slate-950/90 border border-slate-800 focus:border-purple-500/70 focus:ring-1 focus:ring-purple-500/50 rounded-xl pl-3.5 pr-8 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none transition shadow-inner"
                 />
+                {typedInput && (
+                  <button
+                    type="button"
+                    onClick={() => setTypedInput('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5 text-xs rounded-full hover:bg-slate-800 transition"
+                    title="Clear text"
+                  >
+                    &times;
+                  </button>
+                )}
               </div>
               <button
                 type="submit"

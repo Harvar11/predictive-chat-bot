@@ -71,6 +71,8 @@ def init_db():
         tokens_extracted TEXT
     )
     """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_trial_inputs_user_ts ON trial_inputs(user_id, timestamp DESC)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_trial_inputs_session ON trial_inputs(session_id)")
 
     # 3. Model Evolution table (tracks self-upgrading generations and learned patterns)
     cursor.execute("""
@@ -458,11 +460,11 @@ def get_user_memory(user_id: str) -> Dict[str, Any]:
 
     # Fetch recent trial inputs
     cursor.execute("""
-    SELECT question_id, question_domain, sealed_prediction, user_input, is_hit, timestamp
+    SELECT question_id, question_domain, question_text, sealed_prediction, user_input, is_hit, timestamp
     FROM trial_inputs
     WHERE user_id = ?
     ORDER BY id DESC
-    LIMIT 20
+    LIMIT 30
     """, (user_id,))
     recent_trials = [dict(r) for r in cursor.fetchall()]
 

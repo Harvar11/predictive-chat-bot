@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Eye, RotateCcw, Volume2, VolumeX, Cpu, Unlock, Lock, Download, Smartphone, User, LogOut, Brain, MoreVertical, Edit2 } from 'lucide-react';
+import { Sparkles, Eye, RotateCcw, Volume2, VolumeX, Cpu, Unlock, Lock, Download, Smartphone, User, LogOut, Brain, MoreVertical, Edit2, History, Users } from 'lucide-react';
 
 export default function ChatHeader({
   phase,
   persona,
+  currentStreak = 0,
   showMindPeek,
   onToggleMindPeek,
   isUnlocked,
@@ -13,8 +14,10 @@ export default function ChatHeader({
   loading,
   currentUser,
   onOpenAuth,
+  onOpenSwitchAccount,
   onLogout,
   onOpenEditUsername,
+  onOpenHistory,
   userMemory,
   modelVersion,
   onOpenInstall
@@ -128,12 +131,24 @@ export default function ChatHeader({
                   <span className="truncate">{persona}</span>
                 </span>
               )}
+              {currentStreak > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse shadow-sm">
+                  🔥 {currentStreak} {currentStreak === 1 ? 'Hit' : 'Streak'}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         {/* Right: Controls & User Auth */}
         <div className="flex items-center gap-1.5 sm:gap-2 relative shrink-0">
+          {/* Mobile Streak Pill */}
+          {currentStreak > 0 && (
+            <span className="sm:hidden inline-flex items-center px-1.5 py-0.5 rounded-lg text-[10px] font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              🔥{currentStreak}
+            </span>
+          )}
+
           {/* Mind Peek Button - Locked until 3 streak or 10 questions */}
           <button
             onClick={onToggleMindPeek}
@@ -179,8 +194,20 @@ export default function ChatHeader({
                     {(currentUser.username || currentUser.name)?.[0]?.toUpperCase() || 'U'}
                   </div>
                 )}
-                <span className="font-mono text-cyan-300 font-bold max-w-[75px] xs:max-w-[90px] sm:max-w-[125px] truncate text-xs">
+                <span className="font-mono text-cyan-300 font-bold max-w-[70px] xs:max-w-[85px] sm:max-w-[120px] truncate text-xs">
                   @{currentUser.username || currentUser.name}
+                </span>
+
+                {/* Edit Username pencil button */}
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenEditUsername?.();
+                  }}
+                  className="p-1 rounded-md bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-400 hover:text-white transition flex items-center justify-center shrink-0"
+                  title="Edit Username"
+                >
+                  <Edit2 className="w-3 h-3 text-cyan-400 hover:text-white" />
                 </span>
 
                 {userMemory?.total_trials > 0 && (
@@ -249,15 +276,41 @@ export default function ChatHeader({
                         <span>Edit Username</span>
                       </button>
 
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onOpenHistory?.();
+                        }}
+                        className="w-full py-1.5 px-2 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                      >
+                        <History className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Cognitive Dossier</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          if (onOpenSwitchAccount) {
+                            onOpenSwitchAccount();
+                          } else {
+                            onOpenAuth?.();
+                          }
+                        }}
+                        className="w-full py-1.5 px-2 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/40 text-purple-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                      >
+                        <Users className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Switch Account</span>
+                      </button>
+
                       <div className="flex items-center justify-between pt-1">
                         <button
                           onClick={() => {
                             setShowUserMenu(false);
-                            onOpenAuth();
+                            onOpenAuth?.();
                           }}
-                          className="text-[11px] text-slate-400 hover:text-slate-200 hover:underline"
+                          className="text-[11px] text-slate-400 hover:text-slate-200 hover:underline flex items-center gap-1"
                         >
-                          Switch Account
+                          <span>+ Add Account</span>
                         </button>
                         <button
                           onClick={() => {
