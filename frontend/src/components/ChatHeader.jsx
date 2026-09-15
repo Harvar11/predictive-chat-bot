@@ -165,34 +165,22 @@ export default function ChatHeader({
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-purple-500/50 text-xs transition shadow-sm group"
+                className="flex items-center gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-purple-500/40 text-xs transition shadow-sm group"
                 title={`Signed in as @${currentUser.username || currentUser.name} (Click for profile & options)`}
               >
                 {currentUser.avatar_url ? (
                   <img
                     src={currentUser.avatar_url}
                     alt={currentUser.username || currentUser.name}
-                    className="w-5 h-5 rounded-full border border-cyan-400 shrink-0"
+                    className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border border-cyan-400 shrink-0"
                   />
                 ) : (
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-purple-600 to-cyan-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-tr from-purple-600 to-cyan-600 text-white text-[9px] sm:text-[10px] font-bold flex items-center justify-center shrink-0">
                     {(currentUser.username || currentUser.name)?.[0]?.toUpperCase() || 'U'}
                   </div>
                 )}
-                <span className="font-mono text-cyan-300 font-bold max-w-[85px] sm:max-w-[130px] truncate">
+                <span className="font-mono text-cyan-300 font-bold max-w-[75px] xs:max-w-[90px] sm:max-w-[125px] truncate text-xs">
                   @{currentUser.username || currentUser.name}
-                </span>
-
-                {/* Edit Username icon inside the username pill */}
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenEditUsername?.();
-                  }}
-                  className="p-1 rounded-md bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-400 hover:text-white transition"
-                  title="Edit Username"
-                >
-                  <Edit2 className="w-3 h-3" />
                 </span>
 
                 {userMemory?.total_trials > 0 && (
