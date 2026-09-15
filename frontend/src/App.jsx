@@ -8,6 +8,7 @@ import MindPeekHUD from './components/MindPeekHUD';
 import AuthModal from './components/AuthModal';
 import InstallModal from './components/InstallModal';
 import RevealModal from './components/RevealModal';
+import EditUsernameModal from './components/EditUsernameModal';
 import { soundManager } from './utils/sound';
 import {
   apiStartSession,
@@ -17,7 +18,8 @@ import {
   apiLogin,
   apiGoogleAuth,
   apiGetUserMemory,
-  apiGetModelEvolution
+  apiGetModelEvolution,
+  apiUpdateUsername
 } from './services/api';
 
 export default function App() {
@@ -42,6 +44,7 @@ export default function App() {
   const [modelVersion, setModelVersion] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showInstallModal, setShowInstallModal] = useState(false);
+  const [showEditUsernameModal, setShowEditUsernameModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   // Mind-Peek telemetry unlock state & Grand Reveal Modal
@@ -65,7 +68,7 @@ export default function App() {
 
   // Native Android Hardware Back Gesture & PopState Interception
   useEffect(() => {
-    const isAnyModalOpen = showMindPeek || showAuthModal || showInstallModal || showLockModal || showRevealModal;
+    const isAnyModalOpen = showMindPeek || showAuthModal || showInstallModal || showLockModal || showRevealModal || showEditUsernameModal;
     if (isAnyModalOpen) {
       window.history.pushState({ modalOpen: true }, '');
     }
@@ -75,10 +78,11 @@ export default function App() {
       if (showAuthModal) setShowAuthModal(false);
       if (showInstallModal) setShowInstallModal(false);
       if (showLockModal) setShowLockModal(false);
+      if (showEditUsernameModal) setShowEditUsernameModal(false);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [showMindPeek, showAuthModal, showInstallModal, showLockModal, showRevealModal]);
+  }, [showMindPeek, showAuthModal, showInstallModal, showLockModal, showRevealModal, showEditUsernameModal]);
 
   const handlePromptInstall = async () => {
     if (deferredPrompt) {
@@ -236,6 +240,24 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
     initSession();
   };
 
+  const handleUpdateUsername = async (newUsername) => {
+    const userId = currentUser?.user_id || getUserId();
+    const updated = await apiUpdateUsername(userId, newUsername);
+    setCurrentUser(updated);
+    setUserMemory(updated);
+    try {
+      localStorage.setItem('clairvoyant_user', JSON.stringify(updated));
+      localStorage.setItem('aura_user', JSON.stringify(updated));
+    } catch {}
+
+    const noteMsg = {
+      id: `un-${Date.now()}`,
+      role: 'system',
+      text: `✏️ Identity updated: You are now recognized as @${updated.username || newUsername}.`,
+    };
+    setMessages((prev) => [...prev, noteMsg]);
+  };
+
   // Handle user selecting an option or typing freeform text
   const handleRetryLast = () => {
     if (lastSubmission && currentQuestion) {
@@ -391,6 +413,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         currentUser={currentUser}
         onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}
+        onOpenEditUsername={() => setShowEditUsernameModal(true)}
         userMemory={userMemory}
         modelVersion={modelVersion}
         onOpenInstall={() => setShowInstallModal(true)}
@@ -446,6 +469,7 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         onClose={() => setShowAuthModal(false)}
         onLoginSuccess={handleLoginSuccess}
         currentUser={currentUser}
+        onOpenEditUsername={() => setShowEditUsernameModal(true)}
       />
 
       {/* Mind-Peek Locked Notice Dialog */}
@@ -500,6 +524,14 @@ First, 3 quick calibration anchors to tune into your neural baseline. Let's begi
         revealData={revealData}
         onClose={() => setShowRevealModal(false)}
         onRestart={initSession}
+      />
+
+      {/* Edit Username Modal */}
+      <EditUsernameModal
+        isOpen={showEditUsernameModal}
+        currentUsername={currentUser?.username}
+        onClose={() => setShowEditUsernameModal(false)}
+        onUpdateUsername={handleUpdateUsername}
       />
     </div>
   );

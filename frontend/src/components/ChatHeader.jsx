@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Eye, RotateCcw, Volume2, VolumeX, Cpu, Unlock, Lock, Download, Smartphone, User, LogOut, Brain, MoreVertical } from 'lucide-react';
+import { Sparkles, Eye, RotateCcw, Volume2, VolumeX, Cpu, Unlock, Lock, Download, Smartphone, User, LogOut, Brain, MoreVertical, Edit2 } from 'lucide-react';
 
 export default function ChatHeader({
   phase,
@@ -14,6 +14,7 @@ export default function ChatHeader({
   currentUser,
   onOpenAuth,
   onLogout,
+  onOpenEditUsername,
   userMemory,
   modelVersion,
   onOpenInstall
@@ -164,8 +165,8 @@ export default function ChatHeader({
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-purple-500/50 text-xs transition shadow-sm"
-                title={`Logged in as @${currentUser.username || currentUser.name}`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-purple-500/50 text-xs transition shadow-sm group"
+                title={`Signed in as @${currentUser.username || currentUser.name} (Click for profile & options)`}
               >
                 {currentUser.avatar_url ? (
                   <img
@@ -178,9 +179,22 @@ export default function ChatHeader({
                     {(currentUser.username || currentUser.name)?.[0]?.toUpperCase() || 'U'}
                   </div>
                 )}
-                <span className="font-mono text-cyan-300 font-bold max-w-[90px] sm:max-w-[120px] truncate">
+                <span className="font-mono text-cyan-300 font-bold max-w-[85px] sm:max-w-[130px] truncate">
                   @{currentUser.username || currentUser.name}
                 </span>
+
+                {/* Edit Username icon inside the username pill */}
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenEditUsername?.();
+                  }}
+                  className="p-1 rounded-md bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-400 hover:text-white transition"
+                  title="Edit Username"
+                >
+                  <Edit2 className="w-3 h-3" />
+                </span>
+
                 {userMemory?.total_trials > 0 && (
                   <span className="hidden sm:inline text-[10px] font-mono px-1 rounded bg-purple-950 text-purple-300 border border-purple-800">
                     🧠 {userMemory.total_trials}
@@ -198,9 +212,22 @@ export default function ChatHeader({
                         {(currentUser.username || currentUser.name)?.[0]?.toUpperCase() || 'U'}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-bold text-white truncate flex items-center gap-1 font-mono">
-                          @{currentUser.username || currentUser.name}
-                        </p>
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="font-bold text-white truncate font-mono text-xs">
+                            @{currentUser.username || currentUser.name}
+                          </p>
+                          <button
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              onOpenEditUsername?.();
+                            }}
+                            className="px-2 py-0.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-400 hover:text-white text-[11px] font-semibold flex items-center gap-1 transition"
+                            title="Edit Username"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
+                        </div>
                         <p className="text-[10px] text-slate-400 truncate">{currentUser.email || currentUser.name}</p>
                       </div>
                     </div>
@@ -222,25 +249,38 @@ export default function ChatHeader({
                       )}
                     </div>
 
-                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                    <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
                       <button
                         onClick={() => {
                           setShowUserMenu(false);
-                          onOpenAuth();
+                          onOpenEditUsername?.();
                         }}
-                        className="text-[11px] text-cyan-400 hover:underline"
+                        className="w-full py-1.5 px-2 rounded-xl bg-gradient-to-r from-purple-600/25 to-cyan-600/25 hover:from-purple-600/40 hover:to-cyan-600/40 border border-cyan-500/40 text-cyan-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
                       >
-                        Switch Account
+                        <Edit2 className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Edit Username</span>
                       </button>
-                      <button
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          onLogout();
-                        }}
-                        className="text-[11px] text-rose-400 hover:text-rose-300 flex items-center gap-1"
-                      >
-                        <LogOut className="w-3 h-3" /> Sign Out
-                      </button>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            onOpenAuth();
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-slate-200 hover:underline"
+                        >
+                          Switch Account
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            onLogout();
+                          }}
+                          className="text-[11px] text-rose-400 hover:text-rose-300 flex items-center gap-1"
+                        >
+                          <LogOut className="w-3 h-3" /> Sign Out
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </>
@@ -250,7 +290,7 @@ export default function ChatHeader({
             <button
               onClick={onOpenAuth}
               title="Log In or Sign Up"
-              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600/20 to-cyan-600/20 hover:from-purple-600/30 hover:to-cyan-600/30 text-cyan-300 border border-cyan-500/30 transition shadow-sm"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600/20 to-cyan-600/20 hover:from-purple-600/30 hover:to-cyan-600/30 text-cyan-300 border border-cyan-500/30 transition shadow-sm"
             >
               <User className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
               <span className="hidden sm:inline">Login / Sign Up</span>

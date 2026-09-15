@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -503,6 +504,82 @@ def test_typo_tolerance_and_session_recovery():
     print("\nALL TYPO TOLERANCE & SESSION RECOVERY TESTS PASSED!")
 
 
+def test_username_editing_and_validation():
+    print("\n=======================================================")
+    print(" TESTING USERNAME EDITING, UNIQUENESS & VALIDATION ")
+    print("=======================================================")
+
+    ts = int(time.time() * 1000)
+    user_a_email = f"user_a_{ts}@test.com"
+    user_a_un = f"alpha_{ts}"
+    user_b_email = f"user_b_{ts}@test.com"
+    user_b_un = f"beta_{ts}"
+    password = "SecurePassword#2026"
+
+    # 1. Register User A
+    reg_a = client.post("/api/auth/register", json={
+        "email": user_a_email,
+        "password": password,
+        "username": user_a_un,
+        "name": "User Alpha"
+    })
+    assert reg_a.status_code == 200
+    uid_a = reg_a.json()["user_id"]
+    print(f"[OK] Registered User A: {user_a_un} ({uid_a})")
+
+    # 2. Register User B
+    reg_b = client.post("/api/auth/register", json={
+        "email": user_b_email,
+        "password": password,
+        "username": user_b_un,
+        "name": "User Beta"
+    })
+    assert reg_b.status_code == 200
+    uid_b = reg_b.json()["user_id"]
+    print(f"[OK] Registered User B: {user_b_un} ({uid_b})")
+
+    # 3. Update User A's username successfully
+    new_un_a = f"alpha_edited_{ts}"
+    up_res = client.patch(f"/api/user/{uid_a}/username", json={"username": new_un_a})
+    assert up_res.status_code == 200, f"Expected 200, got: {up_res.text}"
+    assert up_res.json()["username"] == new_un_a
+    print(f"[OK] User A successfully edited username to: @{new_un_a}")
+
+    # 4. Verify User A can log in with new username
+    login_new = client.post("/api/auth/login", json={
+        "identifier": new_un_a,
+        "password": password
+    })
+    assert login_new.status_code == 200
+    assert login_new.json()["username"] == new_un_a
+    print("[OK] User A successfully logged in using newly edited username.")
+
+    # 5. User B attempts to change username to User A's new username -> 409 Conflict
+    conflict_res = client.patch(f"/api/user/{uid_b}/username", json={"username": new_un_a})
+    assert conflict_res.status_code == 409
+    assert "already taken" in conflict_res.json()["detail"].lower()
+    print("[OK] Duplicate username change rejected with 409 Conflict.")
+
+    # 6. Reject invalid characters
+    invalid_char_res = client.patch(f"/api/user/{uid_b}/username", json={"username": "bad username with spaces!"})
+    assert invalid_char_res.status_code == 400
+    print("[OK] Username with spaces/special characters rejected with 400.")
+
+    # 7. Reject too short (< 3 chars)
+    short_res = client.patch(f"/api/user/{uid_b}/username", json={"username": "xy"})
+    assert short_res.status_code == 400
+    print("[OK] Short username (<3 chars) rejected with 400.")
+
+    # 8. POST alias endpoint also works
+    new_un_b = f"beta_edited_{ts}"
+    post_res = client.post(f"/api/user/{uid_b}/username", json={"username": new_un_b})
+    assert post_res.status_code == 200
+    assert post_res.json()["username"] == new_un_b
+    print(f"[OK] User B successfully edited username via POST alias to: @{new_un_b}")
+
+    print("\nALL USERNAME EDITING & VALIDATION TESTS PASSED!")
+
+
 if __name__ == "__main__":
     test_personality_driven_predictions_and_number_forces()
     test_user_persistence_google_auth_and_self_upgrading()
@@ -510,6 +587,7 @@ if __name__ == "__main__":
     test_auth_registration_login_and_progress_retention()
     test_dynamic_profiling_and_expanded_forces()
     test_typo_tolerance_and_session_recovery()
+    test_username_editing_and_validation()
 
 
 

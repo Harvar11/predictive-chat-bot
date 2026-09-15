@@ -120,3 +120,16 @@ export async function apiGetModelEvolution() {
   return res.json();
 }
 
+export async function apiUpdateUsername(userId, username) {
+  const res = await fetch(`${API_BASE}/user/${userId}/username`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username }),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Failed to update username: ${res.statusText}`);
+  }
+  return res.json();
+}
+

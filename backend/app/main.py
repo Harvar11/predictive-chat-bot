@@ -10,7 +10,8 @@ from app.database import (
     get_user_memory,
     get_model_evolution,
     register_user,
-    login_user
+    login_user,
+    update_username
 )
 from app.models import (
     StartSessionRequest,
@@ -23,6 +24,7 @@ from app.models import (
     GoogleAuthRequest,
     RegisterRequest,
     LoginRequest,
+    UpdateUsernameRequest,
     UserProfileResponse,
     ModelEvolutionResponse
 )
@@ -240,6 +242,54 @@ def get_user_profile(user_id: str):
         total_hits=memory.get("total_hits", 0),
         accuracy_percent=memory.get("accuracy_percent", 0.0),
         memory_summary=memory.get("memory_summary"),
+        recent_trials=memory.get("recent_trials", [])
+    )
+
+
+@app.patch("/api/user/{user_id}/username", response_model=UserProfileResponse)
+@app.post("/api/user/{user_id}/username", response_model=UserProfileResponse)
+def change_username(user_id: str, req: UpdateUsernameRequest):
+    """
+    Updates the username for a user account.
+    Validates format (3-30 chars, alphanumeric + _.-) and ensures global uniqueness.
+    """
+    try:
+        user_data = update_username(user_id=user_id, new_username=req.username)
+    except ValueError as val_err:
+        err_msg = str(val_err)
+        if err_msg == "USERNAME_ALREADY_TAKEN":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This username is already taken. Please choose another username."
+            )
+        elif err_msg == "INVALID_USERNAME":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username must be 3-30 characters (letters, numbers, underscore, hyphen)."
+            )
+        elif err_msg == "USER_NOT_FOUND":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User account not found."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=err_msg
+            )
+
+    memory = get_user_memory(user_data["user_id"])
+    return UserProfileResponse(
+        user_id=user_data["user_id"],
+        username=user_data.get("username"),
+        name=user_data["name"] or user_data.get("username") or "Cognitive Explorer",
+        email=user_data.get("email"),
+        avatar_url=user_data.get("avatar_url"),
+        master_persona=user_data.get("master_persona"),
+        total_trials=memory.get("total_trials", 0),
+        total_hits=memory.get("total_hits", 0),
+        accuracy_percent=memory.get("accuracy_percent", 0.0),
+        memory_summary=user_data.get("memory_summary"),
         recent_trials=memory.get("recent_trials", [])
     )
 

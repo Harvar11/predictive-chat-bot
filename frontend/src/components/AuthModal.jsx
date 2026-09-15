@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Sparkles, Shield, Eye, EyeOff, Lock, User, Mail, AtSign, LogIn, UserPlus } from 'lucide-react';
+import { X, Sparkles, Shield, Eye, EyeOff, Lock, User, Mail, AtSign, LogIn, UserPlus, Edit2 } from 'lucide-react';
 
 export default function AuthModal({
   isOpen,
   onClose,
   onLoginSuccess,
-  currentUser
+  currentUser,
+  onOpenEditUsername
 }) {
   if (!isOpen) return null;
 
@@ -261,6 +262,35 @@ export default function AuthModal({
             </p>
           </div>
         </div>
+
+        {/* If user is already logged in, show their current username with Edit option */}
+        {currentUser && (
+          <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-between gap-2 text-xs animate-fade-in">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-purple-900/80 text-purple-300 flex items-center justify-center font-bold text-[11px] shrink-0">
+                {(currentUser.username || currentUser.name)?.[0]?.toUpperCase() || 'U'}
+              </div>
+              <div className="min-w-0 truncate">
+                <span className="text-slate-400 text-[10px] block leading-tight">Currently signed in as:</span>
+                <span className="font-mono text-cyan-300 font-bold truncate block text-xs">
+                  @{currentUser.username || currentUser.name}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenEditUsername?.();
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm shrink-0"
+              title="Edit your username"
+            >
+              <Edit2 className="w-3 h-3 text-cyan-400" />
+              <span>Edit Username</span>
+            </button>
+          </div>
+        )}
 
         {/* Tab Switcher: Log In vs Sign Up vs Google */}
         <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800 text-xs font-semibold">

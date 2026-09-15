@@ -100,6 +100,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class UpdateUsernameRequest(BaseModel):
+    username: str
+
+
 class UserProfileResponse(BaseModel):
     user_id: str
     username: Optional[str] = None

@@ -13,14 +13,16 @@ DB_PATH = os.path.join(DB_DIR, "aura_memory.db")
 
 def get_db_connection() -> sqlite3.Connection:
     os.makedirs(DB_DIR, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout = 30000")
     return conn
 
 
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
+    cursor.execute("PRAGMA journal_mode = WAL")
 
     # 1. Users table (stores user identity, master persona, and memory summary)
     cursor.execute("""
@@ -235,6 +237,57 @@ def login_user(identifier: str, password: str) -> Dict[str, Any]:
     user_id = row["user_id"]
     cursor.execute("UPDATE users SET last_seen = ? WHERE user_id = ?", (now, user_id))
     conn.commit()
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    updated_row = cursor.fetchone()
+    conn.close()
+    return dict(updated_row)
+
+
+def update_username(user_id: str, new_username: str) -> Dict[str, Any]:
+    """
+    Updates the username for a user account.
+    Enforces format validation (3-30 chars, alphanumeric + _.-) and global uniqueness.
+    """
+    if not new_username:
+        raise ValueError("INVALID_USERNAME")
+
+    clean_un = new_username.strip().lower()
+    if not re.match(r'^[a-zA-Z0-9_.-]{3,30}$', clean_un):
+        raise ValueError("INVALID_USERNAME")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check if user exists
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        # Auto-create if guest user ID
+        get_or_create_user(user_id=user_id)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            raise ValueError("USER_NOT_FOUND")
+
+    # Check if username is already taken by another user
+    cursor.execute("SELECT user_id FROM users WHERE LOWER(username) = ? AND user_id != ?", (clean_un, user_id))
+    conflict = cursor.fetchone()
+    if conflict:
+        conn.close()
+        raise ValueError("USERNAME_ALREADY_TAKEN")
+
+    now = time.time()
+    cursor.execute("""
+        UPDATE users 
+        SET username = ?, last_seen = ? 
+        WHERE user_id = ?
+    """, (clean_un, now, user_id))
+    conn.commit()
+
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     updated_row = cursor.fetchone()
     conn.close()
